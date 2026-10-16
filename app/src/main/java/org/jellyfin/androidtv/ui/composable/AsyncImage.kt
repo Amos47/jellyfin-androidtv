@@ -18,6 +18,7 @@ import org.jellyfin.androidtv.util.BlurHashDecoder
 
 private data class AsyncImageState(
 	val url: String?,
+	val fallbackUrls: List<String>,
 	val blurHash: String?,
 )
 
@@ -25,6 +26,7 @@ private data class AsyncImageState(
 fun AsyncImage(
 	modifier: Modifier = Modifier,
 	url: String? = null,
+	fallbackUrls: List<String> = emptyList(),
 	blurHash: String? = null,
 	placeholder: Drawable? = null,
 	aspectRatio: Float = 1f,
@@ -43,12 +45,13 @@ fun AsyncImage(
 			}
 		},
 		update = { view ->
-			val compositionState = AsyncImageState(url, blurHash)
+			val compositionState = AsyncImageState(url, fallbackUrls, blurHash)
 			if (state != compositionState) {
 				state = compositionState
 
 				view.load(
 					url = compositionState.url,
+					fallbackUrls = compositionState.fallbackUrls,
 					blurHash = compositionState.blurHash,
 					placeholder = placeholder,
 					aspectRatio = aspectRatio.toDouble(),
