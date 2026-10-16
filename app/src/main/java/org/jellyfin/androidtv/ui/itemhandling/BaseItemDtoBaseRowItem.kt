@@ -3,6 +3,7 @@ package org.jellyfin.androidtv.ui.itemhandling
 import android.content.Context
 import org.jellyfin.androidtv.util.apiclient.JellyfinImage
 import org.jellyfin.androidtv.util.apiclient.albumPrimaryImage
+import org.jellyfin.androidtv.util.apiclient.getEpisodeLandscapeImages
 import org.jellyfin.androidtv.util.apiclient.itemImages
 import org.jellyfin.androidtv.util.apiclient.parentImages
 import org.jellyfin.androidtv.util.apiclient.seriesPrimaryImage
@@ -109,6 +110,8 @@ open class BaseItemDtoBaseRowItem @JvmOverloads constructor(
 	}
 
 	override fun getImage(imageType: BaseRowImageType): JellyfinImage? {
+		getEpisodeImages(imageType)?.let { return it.firstOrNull() }
+
 		val primaryImage = when {
 			preferSeriesPoster && baseItem?.type == BaseItemKind.EPISODE -> baseItem.parentImages[ImageType.PRIMARY]
 				?: baseItem.seriesPrimaryImage
@@ -128,6 +131,24 @@ open class BaseItemDtoBaseRowItem @JvmOverloads constructor(
 			BaseRowImageType.BANNER -> baseItem?.itemImages[ImageType.BANNER] ?: primaryImage
 			BaseRowImageType.THUMB -> baseItem?.itemImages[ImageType.THUMB] ?: primaryImage
 			else -> primaryImage
+		}
+	}
+
+	override fun getImages(imageType: BaseRowImageType): List<JellyfinImage> =
+		getEpisodeImages(imageType) ?: super.getImages(imageType)
+
+	/**
+	 * Landscape episode cards fall back through the episode, season and series artwork. Returns null when the item
+	 * is not displayed as a landscape episode card.
+	 */
+	private fun getEpisodeImages(imageType: BaseRowImageType): List<JellyfinImage>? {
+		if (baseItem?.type != BaseItemKind.EPISODE || preferSeriesPoster) return null
+
+		val landscapeImages = baseItem.getEpisodeLandscapeImages(preferParentThumb)
+		return when (imageType) {
+			BaseRowImageType.BANNER -> null
+			BaseRowImageType.THUMB -> (listOfNotNull(baseItem.itemImages[ImageType.THUMB]) + landscapeImages).distinct()
+			else -> landscapeImages
 		}
 	}
 

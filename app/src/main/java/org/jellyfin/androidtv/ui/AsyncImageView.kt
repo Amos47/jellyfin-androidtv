@@ -13,6 +13,7 @@ import androidx.lifecycle.findViewTreeLifecycleOwner
 import androidx.lifecycle.lifecycleScope
 import coil3.ImageLoader
 import coil3.asImage
+import coil3.request.ErrorResult
 import coil3.request.ImageRequest
 import coil3.request.crossfade
 import coil3.request.target
@@ -26,6 +27,8 @@ import org.jellyfin.androidtv.R
 import org.jellyfin.androidtv.util.BlurHashDecoder
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
+import timber.log.Timber
+import java.io.IOException
 import kotlin.math.round
 import kotlin.time.Duration.Companion.milliseconds
 
@@ -60,13 +63,18 @@ class AsyncImageView @JvmOverloads constructor(
 	 * Load an image from the network using [url]. When the [url] is null or returns a bad response
 	 * the [placeholder] is shown. A [blurHash] is shown while loading the image. An aspect ratio is
 	 * required when using a BlurHash or the sizing will be incorrect.
+	 *
+	 * When loading [url] fails, each of the [fallbackUrls] is tried in order until one succeeds. Network failures stop
+	 * the fallback early, see [allowsImageFallback].
 	 */
+	@JvmOverloads
 	fun load(
 		url: String? = null,
 		blurHash: String? = null,
 		placeholder: Drawable? = null,
 		aspectRatio: Double = 1.0,
 		blurHashResolution: Int = 32,
+		fallbackUrls: List<String> = emptyList(),
 	) = doOnAttach {
 		// Cancel the previous load if still running
 		loadJob?.cancel()
@@ -85,28 +93,46 @@ class AsyncImageView @JvmOverloads constructor(
 				if (blurHashBitmap != null) placeholderOrBlurHash = blurHashBitmap.toDrawable(resources)
 			}
 
-			// Start loading image or placeholder
-			val request = if (url == null) {
-				ImageRequest.Builder(context).apply {
+			// Show placeholder when there is no image to load
+			if (url == null) {
+				val request = ImageRequest.Builder(context).apply {
 					target(this@AsyncImageView)
 					data(placeholder)
 					if (circleCrop) transformations(CircleCropTransformation())
 				}.build()
-			} else {
-				ImageRequest.Builder(context).apply {
+
+				imageLoader.enqueue(request).job.await()
+				return@launch
+			}
+
+			// Start loading image, continuing with the fallbacks when it fails
+			val urls = listOf(url) + fallbackUrls
+			for ((index, candidateUrl) in urls.withIndex()) {
+				val isLastCandidate = index == urls.lastIndex
+				val candidateRequest = ImageRequest.Builder(context).apply {
 					val crossFadeDurationMs = crossFadeDuration.inWholeMilliseconds.toInt()
 					if (crossFadeDurationMs > 0) crossfade(crossFadeDurationMs)
 					else crossfade(false)
 
 					target(this@AsyncImageView)
-					data(url)
+					data(candidateUrl)
 					placeholder(placeholderOrBlurHash?.asImage())
 					if (circleCrop) transformations(CircleCropTransformation())
 					error(placeholder?.asImage())
 				}.build()
-			}
 
-			imageLoader.enqueue(request).job.await()
+				val result = imageLoader.enqueue(candidateRequest).job.await()
+				if (result !is ErrorResult || isLastCandidate || !result.throwable.allowsImageFallback()) break
+
+				Timber.d(result.throwable, "Failed to load image %s, trying fallback", candidateUrl)
+			}
 		}
 	}
 }
+
+/**
+ * Whether a failed image load should continue with the next fallback image. Network failures (no connection, timeouts)
+ * would fail for every image from the same server, so those stop immediately instead of sending more requests. Missing
+ * images (HTTP errors) and images that can't be decoded do continue.
+ */
+fun Throwable.allowsImageFallback(): Boolean = this !is IOException

@@ -22,6 +22,12 @@ abstract class BaseRowItem protected constructor(
 
 	open fun getImage(imageType: ImageType): JellyfinImage? = null
 
+	/**
+	 * All images to try for this item, best first. The first image is shown and the others are used as fallback when
+	 * loading fails.
+	 */
+	open fun getImages(imageType: ImageType): List<JellyfinImage> = listOfNotNull(getImage(imageType))
+
 	open fun getFullName(context: Context): String? = null
 	open fun getName(context: Context): String? = null
 	open fun getSubText(context: Context): String? = null

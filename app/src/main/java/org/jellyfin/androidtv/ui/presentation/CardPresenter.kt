@@ -131,6 +131,7 @@ class CardPresenter(
 
 private data class BaseRowItemDisplayConfig(
 	val image: JellyfinImage?,
+	val fallbackImages: List<JellyfinImage> = emptyList(),
 	val iconRes: Int,
 	val aspectRatio: Float,
 	val overrideShowInfo: Boolean? = null,
@@ -149,13 +150,15 @@ private fun BaseRowItem.getDisplayConfig(imageType: ImageType, uniformAspect: Bo
 			else -> primaryAspectRatio ?: ImageHelper.ASPECT_RATIO_7_9.toFloat()
 		}
 
+		val images = getImages(imageType)
 		val base = BaseRowItemDisplayConfig(
 			aspectRatio = when (imageType) {
 				ImageType.BANNER -> ImageHelper.ASPECT_RATIO_BANNER.toFloat()
 				ImageType.THUMB -> ImageHelper.ASPECT_RATIO_16_9.toFloat()
 				else -> defaultAspectRatio
 			},
-			image = getImage(imageType),
+			image = images.firstOrNull(),
+			fallbackImages = images.drop(1),
 			iconRes = R.drawable.ic_clapperboard,
 		)
 
@@ -311,12 +314,13 @@ private fun CardViewHolderContent(
 			image = {
 				if (image != null) {
 					val api = koinInject<ApiClient>()
+					val maxWidth = with(localDensity) { size.width.roundToPx() }
+					val maxHeight = with(localDensity) { size.height.roundToPx() }
 					AsyncImage(
-						url = image.getUrl(
-							api,
-							maxWidth = with(localDensity) { size.width.roundToPx() },
-							maxHeight = with(localDensity) { size.height.roundToPx() },
-						),
+						url = image.getUrl(api, maxWidth = maxWidth, maxHeight = maxHeight),
+						fallbackUrls = displayConfig.fallbackImages.map { fallbackImage ->
+							fallbackImage.getUrl(api, maxWidth = maxWidth, maxHeight = maxHeight)
+						},
 						blurHash = image.blurHash,
 						aspectRatio = aspectRatio,
 						scaleType = displayConfig.scaleType ?: ImageView.ScaleType.CENTER_CROP,
