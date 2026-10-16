@@ -9,6 +9,8 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -29,14 +31,21 @@ import kotlinx.coroutines.flow.onEach
 import org.jellyfin.androidtv.auth.repository.ServerRepository
 import org.jellyfin.androidtv.auth.repository.SessionRepository
 import org.jellyfin.androidtv.data.repository.NotificationsRepository
+import org.jellyfin.androidtv.preference.UserPreferences
+import org.jellyfin.androidtv.preference.UserSettingPreferences
+import org.jellyfin.androidtv.ui.settings.compat.SettingsViewModel
 import org.jellyfin.androidtv.ui.shared.toolbar.MainToolbar
 import org.jellyfin.androidtv.ui.shared.toolbar.MainToolbarActiveButton
 import org.koin.android.ext.android.inject
+import org.koin.androidx.viewmodel.ext.android.activityViewModel
 
 class HomeFragment : Fragment() {
 	private val sessionRepository by inject<SessionRepository>()
 	private val serverRepository by inject<ServerRepository>()
 	private val notificationRepository by inject<NotificationsRepository>()
+	private val userPreferences by inject<UserPreferences>()
+	private val userSettingPreferences by inject<UserSettingPreferences>()
+	private val settingsViewModel by activityViewModel<SettingsViewModel>()
 
 	override fun onCreateView(
 		inflater: LayoutInflater,
@@ -46,6 +55,22 @@ class HomeFragment : Fragment() {
 		val rowsFocusRequester = remember { FocusRequester() }
 		LaunchedEffect(rowsFocusRequester) { rowsFocusRequester.requestFocus() }
 
+		// The settings are shown as an overlay that doesn't pause this fragment, so recreate the rows when settings
+		// affecting them were changed
+		var rowsKey by remember { mutableIntStateOf(0) }
+		LaunchedEffect(settingsViewModel) {
+			var configurationOnOpen: HomeConfiguration? = null
+			settingsViewModel.visible.collect { visible ->
+				val configuration = getHomeConfiguration(userSettingPreferences, userPreferences)
+				if (visible) {
+					configurationOnOpen = configuration
+				} else if (configurationOnOpen != null && configurationOnOpen != configuration) {
+					configurationOnOpen = null
+					rowsKey++
+				}
+			}
+		}
+
 		Column {
 			MainToolbar(MainToolbarActiveButton.Home)
 
@@ -53,26 +78,28 @@ class HomeFragment : Fragment() {
 			// issue we add custom behavior that only allows focus exit when the current selected row is the first one. Additionally when
 			// we do switch the focus, we reset the leanback state so it won't cause weird behavior when focus is regained
 			var rowsSupportFragment by remember { mutableStateOf<HomeRowsFragment?>(null) }
-			AndroidFragment<HomeRowsFragment>(
-				modifier = Modifier
-					.focusGroup()
-					.focusRequester(rowsFocusRequester)
-					.focusProperties {
-						onExit = {
-							val isFirstRowSelected = rowsSupportFragment?.selectedPosition?.let { it <= 0 } ?: false
-							if (requestedFocusDirection != FocusDirection.Up || !isFirstRowSelected) {
-								cancelFocusChange()
-							} else {
-								rowsSupportFragment?.selectedPosition = 0
-								rowsSupportFragment?.verticalGridView?.clearFocus()
+			key(rowsKey) {
+				AndroidFragment<HomeRowsFragment>(
+					modifier = Modifier
+						.focusGroup()
+						.focusRequester(rowsFocusRequester)
+						.focusProperties {
+							onExit = {
+								val isFirstRowSelected = rowsSupportFragment?.selectedPosition?.let { it <= 0 } ?: false
+								if (requestedFocusDirection != FocusDirection.Up || !isFirstRowSelected) {
+									cancelFocusChange()
+								} else {
+									rowsSupportFragment?.selectedPosition = 0
+									rowsSupportFragment?.verticalGridView?.clearFocus()
+								}
 							}
 						}
+						.fillMaxSize(),
+					onUpdate = { fragment ->
+						rowsSupportFragment = fragment
 					}
-					.fillMaxSize(),
-				onUpdate = { fragment ->
-					rowsSupportFragment = fragment
-				}
-			)
+				)
+			}
 		}
 	}
 
