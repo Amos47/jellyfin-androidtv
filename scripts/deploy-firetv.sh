@@ -1,7 +1,10 @@
 #!/usr/bin/env bash
 # Build the app and install it on a Fire TV (or any Android TV device) over wireless ADB.
 #
-# Usage: scripts/deploy-firetv.sh [--release] [--no-build] [--no-launch] [--logs]
+# Usage: scripts/deploy-firetv.sh [--debug] [--no-build] [--no-launch] [--logs]
+#
+# Installs the signed release build ("Jellyfin Custom") by default. --debug installs the debug build
+# ("Jellyfin Custom Debug") instead, which is a separate app next to it.
 #
 # The device address is read from (first match wins):
 #   1. FIRETV_HOST environment variable, e.g. FIRETV_HOST=192.168.1.50
@@ -10,18 +13,18 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-BUILD_TYPE=debug
+BUILD_TYPE=release
 BUILD=1
 LAUNCH=1
 LOGS=0
 
 for arg in "$@"; do
 	case "$arg" in
-		--release) BUILD_TYPE=release ;;
+		--debug) BUILD_TYPE=debug ;;
 		--no-build) BUILD=0 ;;
 		--no-launch) LAUNCH=0 ;;
 		--logs) LOGS=1 ;;
-		-h|--help) sed -n '2,9p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+		-h|--help) sed -n '2,12p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
 		*) echo "error: unknown argument: $arg" >&2; exit 2 ;;
 	esac
 done
@@ -51,6 +54,7 @@ if [[ "$BUILD" == 1 ]]; then
 fi
 
 APK="$(ls -t "$ROOT"/app/build/outputs/apk/"$BUILD_TYPE"/*.apk 2>/dev/null | head -n1 || true)"
+[[ "$APK" != *-unsigned.apk ]] || fail "release APK is unsigned. Configure signing in ~/.gradle/gradle.properties (see docs/development.md)"
 [[ -n "$APK" ]] || fail "no $BUILD_TYPE APK found in app/build/outputs/apk/$BUILD_TYPE (build first or drop --no-build)"
 
 echo "==> Connecting to $HOST"

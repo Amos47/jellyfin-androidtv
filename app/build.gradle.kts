@@ -13,10 +13,12 @@ android {
 		minSdk = libs.versions.android.minSdk.get().toInt()
 		targetSdk = libs.versions.android.targetSdk.get().toInt()
 
-		// Release version
-		applicationId = namespace
-		versionName = project.getVersionName()
-		versionCode = getVersionCode(versionName!!)
+		// Personal fork: distinct application id so it installs next to the official app
+		applicationId = "org.jellyfin.androidtv.custom"
+
+		// Personal fork: version from git so every build updates the previously installed one in place
+		versionName = project.getVersionName(fallback = project.getGitVersionName() ?: "0.0.0-dev.1")
+		versionCode = project.getGitVersionCode() ?: getVersionCode(versionName!!)
 	}
 
 	buildFeatures {
@@ -58,9 +60,10 @@ android {
 			proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
 
 			// Set package names used in various XML files
-			resValue("string", "app_id", namespace!!)
-			resValue("string", "app_search_suggest_authority", "${namespace}.content")
-			resValue("string", "app_search_suggest_intent_data", "content://${namespace}.content/intent")
+			val applicationId = defaultConfig.applicationId!!
+			resValue("string", "app_id", applicationId)
+			resValue("string", "app_search_suggest_authority", "${applicationId}.content")
+			resValue("string", "app_search_suggest_intent_data", "content://${applicationId}.content/intent")
 
 			// Set flavored application name
 			resValue("string", "app_name", "@string/app_name_release")
@@ -75,14 +78,15 @@ android {
 			applicationIdSuffix = ".debug"
 
 			// Set package names used in various XML files
-			resValue("string", "app_id", namespace + applicationIdSuffix)
-			resValue("string", "app_search_suggest_authority", "${namespace + applicationIdSuffix}.content")
-			resValue("string", "app_search_suggest_intent_data", "content://${namespace + applicationIdSuffix}.content/intent")
+			val applicationId = defaultConfig.applicationId + applicationIdSuffix
+			resValue("string", "app_id", applicationId)
+			resValue("string", "app_search_suggest_authority", "${applicationId}.content")
+			resValue("string", "app_search_suggest_intent_data", "content://${applicationId}.content/intent")
 
 			// Set flavored application name
 			resValue("string", "app_name", "@string/app_name_debug")
 
-			buildConfigField("boolean", "DEVELOPMENT", (defaultConfig.versionCode!! < 100).toString())
+			buildConfigField("boolean", "DEVELOPMENT", (project.getProperty("jellyfin.version") == null).toString())
 		}
 	}
 
@@ -97,7 +101,7 @@ android {
 	}
 }
 
-base.archivesName.set("jellyfin-androidtv-v${project.getVersionName()}")
+base.archivesName.set("jellyfin-androidtv-v${android.defaultConfig.versionName}")
 
 tasks.register("versionTxt") {
 	val path = layout.buildDirectory.asFile.get().resolve("version.txt")
