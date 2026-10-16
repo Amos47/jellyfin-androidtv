@@ -218,6 +218,12 @@ class UserPreferences(context: Context) : SharedPreferenceStore(
 		var homeNextUpMaxDays = intPreference("home_next_up_max_days", 0)
 
 		/**
+		 * Include already watched episodes in next up so series that are being rewatched show up.
+		 * Mirrors the "Enable Rewatching in Next Up" setting of the web client, which is not synchronized.
+		 */
+		var nextUpRewatchingEnabled = booleanPreference("next_up_rewatching_enabled", false)
+
+		/**
 		 * Subtitles foreground color
 		 */
 		var subtitlesBackgroundColor = longPreference("subtitles_background_color", 0x00FFFFFF)

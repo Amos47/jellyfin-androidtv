@@ -3,12 +3,14 @@ package org.jellyfin.androidtv.ui.settings.screen.home
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import org.jellyfin.androidtv.R
 import org.jellyfin.androidtv.preference.UserPreferences
 import org.jellyfin.androidtv.preference.UserSettingPreferences
 import org.jellyfin.androidtv.ui.base.Text
+import org.jellyfin.androidtv.ui.base.form.Checkbox
 import org.jellyfin.androidtv.ui.base.list.ListButton
 import org.jellyfin.androidtv.ui.base.list.ListSection
 import org.jellyfin.androidtv.ui.navigation.LocalRouter
@@ -58,6 +60,18 @@ fun SettingsHomeScreen() {
 				captionContent = { Text(selectedCaption) },
 				onClick = { router.push(Routes.HOME_NEXT_UP_CUTOFF) },
 				modifier = Modifier.focusKey(Routes.HOME_NEXT_UP_CUTOFF)
+			)
+		}
+
+		item {
+			var nextUpRewatchingEnabled by rememberPreference(userPreferences, UserPreferences.nextUpRewatchingEnabled)
+
+			ListButton(
+				headingContent = { Text(stringResource(R.string.next_up_rewatching_enabled)) },
+				trailingContent = { Checkbox(checked = nextUpRewatchingEnabled) },
+				captionContent = { Text(stringResource(R.string.next_up_rewatching_enabled_description)) },
+				onClick = { nextUpRewatchingEnabled = !nextUpRewatchingEnabled },
+				modifier = Modifier.focusKey("next_up_rewatching_enabled")
 			)
 		}
 	}

@@ -25,6 +25,7 @@ import org.jellyfin.androidtv.data.querying.GetSpecialsRequest;
 import org.jellyfin.androidtv.data.querying.GetTrailersRequest;
 import org.jellyfin.androidtv.data.querying.GetUserViewsRequest;
 import org.jellyfin.androidtv.data.repository.UserViewsRepository;
+import org.jellyfin.androidtv.preference.UserPreferences;
 import org.jellyfin.androidtv.ui.GridButton;
 import org.jellyfin.androidtv.ui.browsing.BrowseGridFragment;
 import org.jellyfin.androidtv.ui.browsing.EnhancedBrowseFragment;
@@ -103,6 +104,7 @@ public class ItemRowAdapter extends MutableObjectAdapter<Object> {
 
     private final Lazy<org.jellyfin.sdk.api.client.ApiClient> api = inject(org.jellyfin.sdk.api.client.ApiClient.class);
     private final Lazy<UserViewsRepository> userViewsRepository = inject(UserViewsRepository.class);
+    private final Lazy<UserPreferences> userPreferences = inject(UserPreferences.class);
     private Context context;
 
     private boolean isCurrentlyRetrieving() {
@@ -582,7 +584,7 @@ public class ItemRowAdapter extends MutableObjectAdapter<Object> {
                 }
                 break;
             case NextUp:
-                ItemRowAdapterHelperKt.retrieveNextUpItems(this, api.getValue(), mNextUpQuery);
+                ItemRowAdapterHelperKt.retrieveNextUpItems(this, api.getValue(), userPreferences.getValue(), mNextUpQuery);
                 break;
             case LatestItems:
                 ItemRowAdapterHelperKt.retrieveLatestMedia(this, api.getValue(), mLatestQuery);

@@ -28,6 +28,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.withContext
 import org.jellyfin.androidtv.R
+import org.jellyfin.androidtv.data.querying.withUserPreferences
 import org.jellyfin.androidtv.data.repository.ItemRepository
 import org.jellyfin.androidtv.data.repository.UserViewsRepository
 import org.jellyfin.androidtv.integration.provider.ImageProvider
@@ -52,6 +53,7 @@ import org.jellyfin.sdk.model.api.BaseItemDto
 import org.jellyfin.sdk.model.api.BaseItemKind
 import org.jellyfin.sdk.model.api.ImageType
 import org.jellyfin.sdk.model.api.MediaType
+import org.jellyfin.sdk.model.api.request.GetNextUpRequest
 import org.jellyfin.sdk.model.extensions.ticks
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
@@ -310,10 +312,12 @@ class LeanbackChannelWorker(
 
 			val nextUp = async {
 				api.tvShowsApi.getNextUp(
-					imageTypeLimit = 1,
-					limit = 10,
-					enableResumable = false,
-					fields = ItemRepository.itemFields,
+					GetNextUpRequest(
+						imageTypeLimit = 1,
+						limit = 10,
+						enableResumable = false,
+						fields = ItemRepository.itemFields,
+					).withUserPreferences(userPreferences)
 				).content.items
 			}
 
