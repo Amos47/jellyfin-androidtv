@@ -28,3 +28,12 @@ fun BaseItemDto.getEpisodeLandscapeImages(preferParentThumb: Boolean): List<Jell
 
 	return candidates.filterNotNull().distinct()
 }
+
+/**
+ * Whether this image is (most likely) taller than it is wide. Uses the aspect ratio when the server provides it, which
+ * it only does for an item's own primary image. Otherwise posters (series and parent primary images) are assumed to be
+ * portrait. Used to show posters in full instead of cropping them in landscape cards.
+ */
+val JellyfinImage.isPortrait: Boolean
+	get() = aspectRatio?.let { it < 1f }
+		?: (type == ImageType.PRIMARY && (source == JellyfinImageSource.SERIES || source == JellyfinImageSource.PARENT))

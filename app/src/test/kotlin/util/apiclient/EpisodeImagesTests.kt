@@ -111,6 +111,35 @@ class EpisodeImagesTests : FunSpec({
 		)
 	}
 
+	context("isPortrait") {
+		fun image(source: JellyfinImageSource, type: ImageType, aspectRatio: Float? = null) = JellyfinImage(
+			item = UUID.randomUUID(),
+			source = source,
+			type = type,
+			tag = "tag",
+			blurHash = null,
+			aspectRatio = aspectRatio,
+			index = null,
+		)
+
+		test("Series and parent posters are portrait") {
+			image(JellyfinImageSource.SERIES, ImageType.PRIMARY).isPortrait shouldBe true
+			image(JellyfinImageSource.PARENT, ImageType.PRIMARY).isPortrait shouldBe true
+		}
+
+		test("Known aspect ratio decides") {
+			image(JellyfinImageSource.ITEM, ImageType.PRIMARY, aspectRatio = 0.67f).isPortrait shouldBe true
+			image(JellyfinImageSource.ITEM, ImageType.PRIMARY, aspectRatio = 1.78f).isPortrait shouldBe false
+			image(JellyfinImageSource.SERIES, ImageType.PRIMARY, aspectRatio = 1.78f).isPortrait shouldBe false
+		}
+
+		test("Episode images, backdrops and thumbs without a known aspect ratio are landscape") {
+			image(JellyfinImageSource.ITEM, ImageType.PRIMARY).isPortrait shouldBe false
+			image(JellyfinImageSource.PARENT, ImageType.BACKDROP).isPortrait shouldBe false
+			image(JellyfinImageSource.SERIES, ImageType.THUMB).isPortrait shouldBe false
+		}
+	}
+
 	test("Thumbnail preference without any thumb uses the episode image") {
 		val images = episode(primary = true)
 			.getEpisodeLandscapeImages(preferParentThumb = true)

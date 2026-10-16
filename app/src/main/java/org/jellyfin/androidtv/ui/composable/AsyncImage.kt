@@ -45,6 +45,9 @@ fun AsyncImage(
 			}
 		},
 		update = { view ->
+			// Cards are recycled, so the scale type can change between items
+			view.scaleType = scaleType ?: ImageView.ScaleType.FIT_CENTER
+
 			val compositionState = AsyncImageState(url, fallbackUrls, blurHash)
 			if (state != compositionState) {
 				state = compositionState
