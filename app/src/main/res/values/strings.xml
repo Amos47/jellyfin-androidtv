@@ -425,7 +425,7 @@
     <string name="home_section_latest_media">Recently added media</string>
     <string name="home_section_library">My media</string>
     <string name="home_section_library_small">My media (small)</string>
-    <string name="home_section_resume">Continue watching</string>
+    <string name="home_section_resume">Continue watching (in progress only)</string>
     <string name="home_section_resume_audio">Continue listening</string>
     <string name="home_section_active_recordings">Active recordings</string>
     <string name="home_section_next_up">Next up</string>
@@ -434,7 +434,7 @@
     <string name="home_section_i">Home section %1$d</string>
     <string name="home_next_up_max_days">Next up date cutoff</string>
     <string name="home_next_up_max_days_disabled">Disabled</string>
-    <string name="home_section_continue_watching_combined">Continue watching + next up</string>
+    <string name="home_section_continue_watching_combined">Continue watching</string>
     <string name="home_section_new_releases">New releases</string>
     <string name="lbl_new_releases">New releases</string>
     <string name="home_new_releases_max_days">New releases period</string>
