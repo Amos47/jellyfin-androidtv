@@ -22,6 +22,8 @@ import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.findViewTreeCompositionContext
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -45,9 +47,11 @@ import org.jellyfin.androidtv.ui.itemhandling.BaseItemDtoBaseRowItem
 import org.jellyfin.androidtv.ui.itemhandling.BaseRowItem
 import org.jellyfin.androidtv.ui.itemhandling.BaseRowType
 import org.jellyfin.androidtv.ui.itemhandling.GridButtonBaseRowItem
+import org.jellyfin.androidtv.util.BlurHashDecoder
 import org.jellyfin.androidtv.util.ImageHelper
 import org.jellyfin.androidtv.util.apiclient.JellyfinImage
 import org.jellyfin.androidtv.util.apiclient.getUrl
+import org.jellyfin.androidtv.util.apiclient.isPortrait
 import org.jellyfin.androidtv.util.getActivity
 import org.jellyfin.design.Tokens
 import org.jellyfin.sdk.api.client.ApiClient
@@ -128,6 +132,9 @@ class CardPresenter(
 		}
 	}
 }
+
+private const val LETTERBOX_BLURHASH_WIDTH = 32
+private const val LETTERBOX_BLURHASH_HEIGHT = 18
 
 private data class BaseRowItemDisplayConfig(
 	val image: JellyfinImage?,
@@ -316,6 +323,24 @@ private fun CardViewHolderContent(
 					val api = koinInject<ApiClient>()
 					val maxWidth = with(localDensity) { size.width.roundToPx() }
 					val maxHeight = with(localDensity) { size.height.roundToPx() }
+
+					// Show portrait images (like series posters) in full in landscape cards instead of cropping them
+					val letterbox = aspectRatio > 1f && image.isPortrait
+					if (letterbox) {
+						val background = remember(image.blurHash) {
+							BlurHashDecoder.decode(image.blurHash, LETTERBOX_BLURHASH_WIDTH, LETTERBOX_BLURHASH_HEIGHT)?.asImageBitmap()
+						}
+
+						if (background != null) {
+							Image(
+								bitmap = background,
+								contentDescription = null,
+								contentScale = ContentScale.Crop,
+								modifier = Modifier.fillMaxSize(),
+							)
+						}
+					}
+
 					AsyncImage(
 						url = image.getUrl(api, maxWidth = maxWidth, maxHeight = maxHeight),
 						fallbackUrls = displayConfig.fallbackImages.map { fallbackImage ->
@@ -323,7 +348,10 @@ private fun CardViewHolderContent(
 						},
 						blurHash = image.blurHash,
 						aspectRatio = aspectRatio,
-						scaleType = displayConfig.scaleType ?: ImageView.ScaleType.CENTER_CROP,
+						scaleType = when {
+							letterbox -> ImageView.ScaleType.FIT_CENTER
+							else -> displayConfig.scaleType ?: ImageView.ScaleType.CENTER_CROP
+						},
 						modifier = Modifier
 							.fillMaxSize()
 					)
