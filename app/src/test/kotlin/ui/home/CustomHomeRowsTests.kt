@@ -160,6 +160,33 @@ class CustomHomeRowsTests : FunSpec({
 		}
 	}
 
+	context("replaceWithSeries") {
+		fun series(id: UUID, name: String) = BaseItemDto(id = id, name = name, type = BaseItemKind.SERIES)
+
+		test("Single new episodes are replaced with their series") {
+			val items = listOf(
+				episode("Cupertino S01E02", office, 1, 2),
+				movie("Movie"),
+				episode("SVU S26E06", svu, 26, 6),
+			)
+
+			replaceWithSeries(items, listOf(series(office, "Cupertino"), series(svu, "SVU"))).names() shouldBe
+				listOf("Cupertino", "Movie", "SVU")
+		}
+
+		test("Series already in the row are not duplicated") {
+			val items = listOf(series(svu, "SVU"), episode("SVU S26E06", svu, 26, 6))
+
+			replaceWithSeries(items, listOf(series(svu, "SVU"))).names() shouldBe listOf("SVU")
+		}
+
+		test("Episodes whose series could not be loaded are kept") {
+			val items = listOf(episode("SVU S26E06", svu, 26, 6))
+
+			replaceWithSeries(items, emptyList()).names() shouldBe listOf("SVU S26E06")
+		}
+	}
+
 	context("collapseNewReleases") {
 		test("One card per show using the earliest unwatched new episode") {
 			val e6 = episode("SVU S26E06", svu, 26, 6, premiere = now.minusDays(2))

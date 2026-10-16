@@ -57,6 +57,26 @@ class HomeFragmentCustomRow(
 	}
 }
 
+// Recently added
+
+/**
+ * Replace episodes and seasons with their series so recently added rows show series posters with unwatched counts. The
+ * server returns a single new episode instead of its series. Items keep the position of their first occurrence, and
+ * items whose series is not in [series] are kept as-is.
+ */
+fun replaceWithSeries(items: List<BaseItemDto>, series: List<BaseItemDto>): List<BaseItemDto> {
+	val seriesById = series.associateBy { it.id }
+	return items
+		.map { item -> item.latestSeriesId?.let(seriesById::get) ?: item }
+		.distinctBy { it.id }
+}
+
+/**
+ * The series id of an episode or season in a recently added row, or null for other items.
+ */
+val BaseItemDto.latestSeriesId: UUID?
+	get() = seriesId.takeIf { type == BaseItemKind.EPISODE || type == BaseItemKind.SEASON }
+
 // Continue watching
 
 /**
