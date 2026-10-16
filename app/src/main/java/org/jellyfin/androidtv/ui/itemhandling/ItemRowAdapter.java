@@ -203,6 +203,18 @@ public class ItemRowAdapter extends MutableObjectAdapter<Object> {
         this.staticHeight = true;
     }
 
+    /**
+     * Rows that build their own queries, see CustomHomeRows.kt.
+     */
+    public ItemRowAdapter(Context context, QueryType queryType, boolean preferParentThumb, Presenter presenter, MutableObjectAdapter<Row> parent) {
+        super(presenter);
+        this.context = context;
+        mParent = parent;
+        this.queryType = queryType;
+        this.preferParentThumb = preferParentThumb;
+        this.staticHeight = true;
+    }
+
     public ItemRowAdapter(Context context, GetSeriesTimersRequest query, Presenter presenter, MutableObjectAdapter<Row> parent) {
         super(presenter);
         this.context = context;
@@ -651,6 +663,12 @@ public class ItemRowAdapter extends MutableObjectAdapter<Object> {
                 break;
             case Resume:
                 ItemRowAdapterHelperKt.retrieveResumeItems(this, api.getValue(), resumeQuery);
+                break;
+            case ContinueWatching:
+                CustomHomeRowsAdapterHelperKt.retrieveContinueWatching(this, api.getValue(), userPreferences.getValue());
+                break;
+            case NewReleases:
+                CustomHomeRowsAdapterHelperKt.retrieveNewReleases(this, api.getValue(), userPreferences.getValue());
                 break;
         }
     }

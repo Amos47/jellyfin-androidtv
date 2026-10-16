@@ -22,4 +22,9 @@ enum class HomeSectionType(
 	NEXT_UP("nextup", R.string.home_section_next_up),
 	LIVE_TV("livetv", R.string.home_section_livetv),
 	NONE("none", R.string.home_section_none),
+
+	// Personal fork sections, prefixed to avoid clashing with future jellyfin-web sections. Other clients show an empty
+	// section for these values.
+	CONTINUE_WATCHING_COMBINED("custom_continuewatching", R.string.home_section_continue_watching_combined),
+	NEW_RELEASES("custom_newreleases", R.string.home_section_new_releases),
 }
