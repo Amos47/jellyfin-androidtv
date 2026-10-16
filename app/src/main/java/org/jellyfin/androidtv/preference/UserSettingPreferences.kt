@@ -2,12 +2,14 @@ package org.jellyfin.androidtv.preference
 
 import org.jellyfin.androidtv.constant.HomeSectionType
 import org.jellyfin.androidtv.preference.store.DisplayPreferencesStore
+import org.jellyfin.preference.Preference
 import org.jellyfin.preference.enumPreference
 import org.jellyfin.preference.intPreference
 import org.jellyfin.sdk.api.client.ApiClient
 
 class UserSettingPreferences(
 	api: ApiClient,
+	private val userPreferences: UserPreferences,
 ) : DisplayPreferencesStore(
 	displayPreferencesId = "usersettings",
 	api = api,
@@ -41,6 +43,36 @@ class UserSettingPreferences(
 		homesection8,
 		homesection9,
 	)
+
+	/**
+	 * Personal fork: home section types the server can't store are kept on the device, see [LocalHomeSectionTypes].
+	 */
+	private var localHomeSections: Map<Int, HomeSectionType>
+		get() = parseLocalHomeSections(userPreferences[UserPreferences.localHomeSections])
+		set(value) {
+			userPreferences[UserPreferences.localHomeSections] = value.toLocalHomeSectionsString()
+		}
+
+	override fun <T : Enum<T>> getEnum(preference: Preference<T>): T {
+		val localType = homeSectionIndex(preference.key)?.let { index -> localHomeSections[index] }
+		@Suppress("UNCHECKED_CAST")
+		if (localType != null && preference.type == HomeSectionType::class) return localType as T
+
+		return super.getEnum(preference)
+	}
+
+	override fun <V : Enum<V>> setEnum(preference: Preference<*>, value: Enum<V>) {
+		val index = homeSectionIndex(preference.key)
+		if (index == null || value !is HomeSectionType) return super.setEnum(preference, value)
+
+		if (value in LocalHomeSectionTypes) {
+			localHomeSections = localHomeSections + (index to value)
+			super.setEnum(preference, HomeSectionType.NONE)
+		} else {
+			localHomeSections = localHomeSections - index
+			super.setEnum(preference, value)
+		}
+	}
 
 	val activeHomesections
 		get() = homesections
