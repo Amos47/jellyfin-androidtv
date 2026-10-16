@@ -18,6 +18,8 @@ import org.jellyfin.androidtv.preference.UserPreferences
 import org.jellyfin.androidtv.ui.GridButton
 import org.jellyfin.androidtv.ui.browsing.BrowseGridFragment.SortOption
 import org.jellyfin.androidtv.ui.home.distinctBySeries
+import org.jellyfin.androidtv.ui.home.latestSeriesId
+import org.jellyfin.androidtv.ui.home.replaceWithSeries
 import org.jellyfin.sdk.api.client.ApiClient
 import org.jellyfin.sdk.api.client.exception.InvalidStatusException
 import org.jellyfin.sdk.api.client.extensions.artistsApi
@@ -166,7 +168,20 @@ fun ItemRowAdapter.retrieveLatestMedia(api: ApiClient, query: GetLatestMediaRequ
 	ProcessLifecycleOwner.get().lifecycleScope.launch {
 		runCatching {
 			val response = withContext(Dispatchers.IO) {
-				api.userLibraryApi.getLatestMedia(query).content
+				val latest = api.userLibraryApi.getLatestMedia(query).content
+
+				// Personal fork: show series posters instead of single new episodes
+				val seriesIds = latest.mapNotNull { it.latestSeriesId }.distinct()
+				if (seriesIds.isEmpty()) latest
+				else replaceWithSeries(
+					items = latest,
+					series = api.itemsApi.getItems(
+						ids = seriesIds,
+						fields = query.fields,
+						imageTypeLimit = 1,
+						enableUserData = true,
+					).content.items,
+				)
 			}
 
 			setItems(
