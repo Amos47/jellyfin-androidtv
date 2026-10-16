@@ -785,7 +785,6 @@ public class FullDetailsFragment extends Fragment implements RecordingIndicatorV
         if (BaseItemExtensionsKt.canPlay(baseItem)) {
             mDetailsOverviewRow.addAction(mResumeButton);
             boolean isSeries = baseItem.getType() == BaseItemKind.SERIES;
-            boolean isStarted = baseItem.getUserData().getPlayedPercentage() != null && baseItem.getUserData().getPlayedPercentage() > 0;
 
             playButton = TextUnderButton.create(requireContext(), R.drawable.ic_play, buttonSize, 2, getString(BaseItemExtensionsKt.isLiveTv(mBaseItem) ? R.string.lbl_tune_to_channel : Utils.getSafeValue(mBaseItem.isFolder(), false) ? R.string.lbl_play_all : R.string.lbl_play), new View.OnClickListener() {
                 @Override
@@ -795,7 +794,8 @@ public class FullDetailsFragment extends Fragment implements RecordingIndicatorV
             });
             mDetailsOverviewRow.addAction(playButton);
 
-            if (isSeries && !isStarted) {
+            // Personal fork: always look up the episode to continue with, a series being rewatched is marked as played
+            if (isSeries) {
                 FullDetailsFragmentHelperKt.getNextUpEpisode(this, nextUpEpisode -> {
                     handleResumeButtonAndFocus(nextUpEpisode);
                     return null;
@@ -1074,13 +1074,9 @@ public class FullDetailsFragment extends Fragment implements RecordingIndicatorV
 
     private void handleResumeButtonAndFocus(BaseItemDto nextUpEpisode) {
         boolean isSeries = mBaseItem.getType() == BaseItemKind.SERIES;
-        boolean isFinished = mBaseItem.getUserData().getPlayed();
-        boolean isStarted = mBaseItem.getUserData().getPlayedPercentage() != null && mBaseItem.getUserData().getPlayedPercentage() > 0;
-        if (!isStarted && nextUpEpisode != null) {
-            isStarted = nextUpEpisode.getUserData().getPlaybackPositionTicks() > 0;
-        }
 
-        boolean resumeButtonVisible = (isSeries && isStarted && !isFinished) || (JavaCompat.getCanResume(mBaseItem));
+        // Personal fork: series can be continued when there is an in-progress or next up episode, including rewatches
+        boolean resumeButtonVisible = isSeries ? nextUpEpisode != null : JavaCompat.getCanResume(mBaseItem);
         mResumeButton.setVisibility(resumeButtonVisible ? View.VISIBLE : View.GONE);
 
         if (resumeButtonVisible) {

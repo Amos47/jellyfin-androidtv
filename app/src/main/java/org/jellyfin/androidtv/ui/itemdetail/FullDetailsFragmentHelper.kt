@@ -10,9 +10,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.jellyfin.androidtv.R
 import org.jellyfin.androidtv.data.model.DataRefreshService
-import org.jellyfin.androidtv.data.querying.withUserPreferences
 import org.jellyfin.androidtv.data.repository.ItemMutationRepository
-import org.jellyfin.androidtv.data.repository.ItemRepository
 import org.jellyfin.androidtv.preference.UserPreferences
 import org.jellyfin.androidtv.ui.navigation.Destinations
 import org.jellyfin.androidtv.ui.navigation.NavigationRepository
@@ -33,7 +31,6 @@ import org.jellyfin.sdk.model.api.BaseItemDto
 import org.jellyfin.sdk.model.api.BaseItemKind
 import org.jellyfin.sdk.model.api.MediaType
 import org.jellyfin.sdk.model.api.SeriesTimerInfoDto
-import org.jellyfin.sdk.model.api.request.GetNextUpRequest
 import org.jellyfin.sdk.model.extensions.ticks
 import org.jellyfin.sdk.model.serializer.toUUID
 import org.koin.android.ext.android.inject
@@ -237,21 +234,18 @@ fun FullDetailsFragment.getNextUpEpisode(callback: (BaseItemDto?) -> Unit) {
 	}
 }
 
+/**
+ * Get the episode to continue the series with: the in-progress episode, otherwise next up. Personal fork: see
+ * SeriesContinue.kt.
+ */
 suspend fun FullDetailsFragment.getNextUpEpisode(): BaseItemDto? {
 	val api by inject<ApiClient>()
 	val userPreferences by inject<UserPreferences>()
 
 	try {
-		val episodes = withContext(Dispatchers.IO) {
-			api.tvShowsApi.getNextUp(
-				GetNextUpRequest(
-					seriesId = mBaseItem.seriesId ?: mBaseItem.id,
-					fields = ItemRepository.itemFields,
-					limit = 1,
-				).withUserPreferences(userPreferences)
-			).content
+		return withContext(Dispatchers.IO) {
+			api.getSeriesContinueEpisode(mBaseItem.seriesId ?: mBaseItem.id, userPreferences)
 		}
-		return episodes.items.firstOrNull()
 	} catch (err: ApiClientException) {
 		Timber.w(err, "Failed to get next up items")
 		return null
