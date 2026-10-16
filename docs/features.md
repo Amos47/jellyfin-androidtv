@@ -16,6 +16,7 @@ Statuses: **Planned** → **In progress** → **Implemented** (unit tested, buil
 | [New Releases section](#new-releases-section) | P1 | Implemented, device check pending |
 | [Portrait images on landscape cards](#portrait-images-on-landscape-cards) | P1 | Implemented, not installed yet |
 | [Series-level resume](#series-level-resume) | P1 | Implemented, not installed yet |
+| [Skip intro (server setup)](#skip-intro-server-setup) | P1 | Needs server plugin |
 | [CI/CD for the fork](#cicd-for-the-fork) | P1 | Planned |
 | [Artwork fallback on details screens](#artwork-fallback-on-details-screens) | P2 | Planned |
 | [Upstream sync automation](#upstream-sync-automation) | P2 | Planned |
@@ -197,6 +198,22 @@ Statuses: **Planned** → **In progress** → **Implemented** (unit tested, buil
     shuffle).
   - Long-press → **Play all** still starts from the beginning.
   - Location: `KeyProcessor.java` (SERIES case) and `KeyProcessorHelper.playSeriesContinueEpisode`.
+
+## Skip intro (server setup)
+
+- **Status:** no app change is needed. The app already shows an "ask to skip" button for intro and outro segments
+  (Settings → Playback → Media segments), in both players.
+- **Finding (2026-10-16):**
+  - The server (Jellyfin 12.2.0, on the Mac) has no segment plugin installed, and its `MediaSegments` table is empty.
+    So no show has skip intro, not just Friends.
+  - Jellyfin doesn't detect intros by itself.
+  - The bundled ffmpeg (8.1.3-Jellyfin) includes Chromaprint, which Intro Skipper needs.
+- **Setup:**
+  1. Install the **Intro Skipper** plugin (repository `https://intro-skipper.org/manifest.json`, current releases
+     require Jellyfin 12).
+  2. Restart the server.
+  3. Let its analysis task run.
+- **Note:** a failed segment request is silently treated as "no segments" (`MediaSegmentRepositoryImpl.getSegmentsForItem`).
 
 ## CI/CD for the fork
 
