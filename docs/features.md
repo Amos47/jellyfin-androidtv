@@ -191,8 +191,12 @@ Statuses: **Planned** → **In progress** → **Implemented** (unit tested, buil
   episodes, and finished.
 - **Requests:** 3 small parallel requests when a series page opens (resume items in the series, next up for the series,
   last played episode).
-- **Not changed:** pressing Play on a series *card* (outside the details page) still starts from the pilot, through
-  `SdkPlaybackHelper`.
+- **Play key on series cards:**
+  - The remote's Play/Pause key on a series card continues with the same episode, at its saved position.
+  - When there is nothing to continue, it falls back to the original play menu (play first unwatched, play all,
+    shuffle).
+  - Long-press → **Play all** still starts from the beginning.
+  - Location: `KeyProcessor.java` (SERIES case) and `KeyProcessorHelper.playSeriesContinueEpisode`.
 
 ## CI/CD for the fork
 
