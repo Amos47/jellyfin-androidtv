@@ -17,6 +17,7 @@ import org.jellyfin.androidtv.data.repository.UserViewsRepository
 import org.jellyfin.androidtv.preference.UserPreferences
 import org.jellyfin.androidtv.ui.GridButton
 import org.jellyfin.androidtv.ui.browsing.BrowseGridFragment.SortOption
+import org.jellyfin.androidtv.ui.home.distinctBySeries
 import org.jellyfin.sdk.api.client.ApiClient
 import org.jellyfin.sdk.api.client.exception.InvalidStatusException
 import org.jellyfin.sdk.api.client.extensions.artistsApi
@@ -80,8 +81,11 @@ fun ItemRowAdapter.retrieveResumeItems(api: ApiClient, query: GetResumeItemsRequ
 				api.itemsApi.getResumeItems(query).content
 			}
 
+			// Personal fork: one card per series
+			val items = response.items.distinctBySeries()
+
 			setItems(
-				items = response.items,
+				items = items,
 				transform = { item, _ ->
 					BaseItemDtoBaseRowItem(
 						item,

@@ -68,7 +68,8 @@ class NotificationsRepositoryImpl(
 	private fun addBetaNotification() {
 		val dismissedVersion = systemPreferences[SystemPreferences.dismissedBetaNotificationVersion]
 		val currentVersion = BuildConfig.VERSION_NAME
-		val isBeta = currentVersion.lowercase().contains("beta")
+		// Personal fork builds take their version from the upstream tag, which may be a beta
+		val isBeta = currentVersion.lowercase().contains("beta") && BuildConfig.APPLICATION_ID == "org.jellyfin.androidtv"
 
 		if (isBeta && currentVersion != dismissedVersion) {
 			addNotification(context.getString(R.string.app_notification_beta, currentVersion)) {
