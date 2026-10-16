@@ -23,8 +23,8 @@ enum class HomeSectionType(
 	LIVE_TV("livetv", R.string.home_section_livetv),
 	NONE("none", R.string.home_section_none),
 
-	// Personal fork sections, prefixed to avoid clashing with future jellyfin-web sections. Other clients show an empty
-	// section for these values.
+	// Personal fork sections, prefixed to avoid clashing with future jellyfin-web sections. The server can't store these,
+	// so they are kept on the device (see LocalHomeSections.kt).
 	CONTINUE_WATCHING_COMBINED("custom_continuewatching", R.string.home_section_continue_watching_combined),
 	NEW_RELEASES("custom_newreleases", R.string.home_section_new_releases),
 }
