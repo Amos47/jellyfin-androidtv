@@ -42,12 +42,19 @@ positioned by their newest release. Items without a release date never appear.
 
 ## Storage and other clients
 
-Section types live in the **server** display preferences (`usersettings`, client `emby`), which are shared with
-jellyfin-web and the iPhone app (which wraps jellyfin-web):
+Home sections are normally stored in the **server** display preferences (`usersettings`, client `emby`), shared with
+jellyfin-web and the iPhone app.
 
-- jellyfin-web renders unknown section values as an empty section (`homesections.js`, the `default` case).
-- Put fork sections in slots that are "None" on the web, otherwise the web loses what it showed in that slot.
-- The web settings dropdown can't show fork values. Saving Home settings on the web may reset those slots to "None".
+- The server only stores section types it knows (`DisplayPreferencesController`). It replaces unknown values with the
+  default section for that slot.
+- The fork's section types are therefore kept **on the device**, per slot:
+  - Stored in `UserPreferences.localHomeSections`, e.g. `3=custom_continuewatching`.
+  - Handled in `UserSettingPreferences.getEnum` and `setEnum`, with parsing in `preference/LocalHomeSections.kt`.
+  - The server stores `none` for those slots, so the web and iPhone show nothing there.
+- Choosing a standard section for a slot clears its local override and syncs through the server as usual.
+- Limitation: the local overrides apply to the device, not per Jellyfin user.
+- Server-stored settings are committed outside the settings screen's composition (`rememberPreference`). Before this,
+  navigating back cancelled the commit, so section changes were never saved on the server (an upstream bug).
 
 ## Refreshing after settings changes
 
