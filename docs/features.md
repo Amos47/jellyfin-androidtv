@@ -15,7 +15,7 @@ Statuses: **Planned** → **In progress** → **Implemented** (unit tested, buil
 | [Home refresh after settings changes](#home-refresh-after-settings-changes) | P1 | Implemented, device check pending |
 | [New Releases section](#new-releases-section) | P1 | Implemented, device check pending |
 | [Portrait images on landscape cards](#portrait-images-on-landscape-cards) | P1 | Implemented, not installed yet |
-| [Series-level resume (Play button)](#series-level-resume) | P1 | Planned |
+| [Series-level resume](#series-level-resume) | P1 | Implemented, not installed yet |
 | [CI/CD for the fork](#cicd-for-the-fork) | P1 | Planned |
 | [Artwork fallback on details screens](#artwork-fallback-on-details-screens) | P2 | Planned |
 | [Upstream sync automation](#upstream-sync-automation) | P2 | Planned |
@@ -174,15 +174,25 @@ Statuses: **Planned** → **In progress** → **Implemented** (unit tested, buil
 ## Series-level resume
 
 - **Problem:**
-  - **Play** on a series starts at the pilot: `SdkPlaybackHelper.getItemsToPlay` queues all episodes from the start.
-  - **Resume** already uses Next Up, so it follows rewatching.
-- **Plan:**
-  - Make Play on a started series use the same episode choice as the combined Continue Watching row: the in-progress
-    episode, else next up.
-  - Queue from that episode in aired order. A never-watched series still starts at the pilot.
-  - For a fully watched series without a rewatch, consider an explicit "Watch again from the start" choice.
-- **Tests to add:** never watched, partially watched, in-progress episode, rewatch position, end of season, end of
-  series, specials.
+  - A series' resume button ("Play next up") was hidden whenever the series was marked played. That is always the case
+    during a rewatch, which left only **Play all**, starting at the pilot.
+  - When the button was shown, it used Next Up, which skips the in-progress episode during a rewatch.
+- **Behavior:**
+  - The resume button shows, and gets focus, whenever there is an episode to continue with: the in-progress episode
+    (with the resume or start-over menu), otherwise next up (including rewatches when enabled).
+  - It uses the same selection as the combined Continue watching row (`combineContinueWatching`), so the app has one
+    notion of "the next episode".
+  - For a never-watched series, or a finished one with no rewatch, the button stays hidden and **Play all** (from the
+    pilot) has focus.
+  - Playback queues the following episodes when "media queuing" is enabled (the upstream behavior for episodes).
+- **Location:** `ui/itemdetail/SeriesContinue.kt`, `FullDetailsFragmentHelper.getNextUpEpisode`, and
+  `FullDetailsFragment.handleResumeButtonAndFocus`.
+- **Tests:** `SeriesContinueTests`: never watched, partially watched, in progress, rewatch in progress, rewatch between
+  episodes, and finished.
+- **Requests:** 3 small parallel requests when a series page opens (resume items in the series, next up for the series,
+  last played episode).
+- **Not changed:** pressing Play on a series *card* (outside the details page) still starts from the pilot, through
+  `SdkPlaybackHelper`.
 
 ## CI/CD for the fork
 
