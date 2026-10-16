@@ -7,3 +7,6 @@ local.properties
 .kotlin/
 build/
 captures/
+
+# Personal fork working state (agent/session notes)
+/.fork-state/
