@@ -25,4 +25,8 @@ enum class QueryType {
 	SeriesTimer,
 	Premieres,
 	Resume,
+
+	// Personal fork home rows, see ui/home/CustomHomeRows.kt
+	ContinueWatching,
+	NewReleases,
 }

@@ -224,6 +224,11 @@ class UserPreferences(context: Context) : SharedPreferenceStore(
 		var nextUpRewatchingEnabled = booleanPreference("next_up_rewatching_enabled", false)
 
 		/**
+		 * How many days back the new releases home section goes, based on release date.
+		 */
+		var homeNewReleasesMaxDays = intPreference("home_new_releases_max_days", 30)
+
+		/**
 		 * Subtitles foreground color
 		 */
 		var subtitlesBackgroundColor = longPreference("subtitles_background_color", 0x00FFFFFF)

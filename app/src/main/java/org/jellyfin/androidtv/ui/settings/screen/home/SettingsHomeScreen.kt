@@ -74,5 +74,23 @@ fun SettingsHomeScreen() {
 				modifier = Modifier.focusKey("next_up_rewatching_enabled")
 			)
 		}
+
+		item {
+			ListSection(
+				headingContent = { Text(stringResource(R.string.lbl_new_releases)) },
+			)
+		}
+
+		item {
+			val homeNewReleasesMaxDays by rememberPreference(userPreferences, UserPreferences.homeNewReleasesMaxDays)
+			val selectedCaption = getNewReleasesPeriodOptions().firstOrNull { it.first == homeNewReleasesMaxDays }?.second.orEmpty()
+
+			ListButton(
+				headingContent = { Text(stringResource(R.string.home_new_releases_max_days)) },
+				captionContent = { Text(selectedCaption) },
+				onClick = { router.push(Routes.HOME_NEW_RELEASES_PERIOD) },
+				modifier = Modifier.focusKey(Routes.HOME_NEW_RELEASES_PERIOD)
+			)
+		}
 	}
 }

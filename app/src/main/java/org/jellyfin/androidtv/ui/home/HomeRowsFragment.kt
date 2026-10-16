@@ -121,6 +121,8 @@ class HomeRowsFragment : RowsSupportFragment(), AudioEventListener, View.OnKeyLi
 					rows.add(helper.loadOnNow())
 				}
 
+				HomeSectionType.CONTINUE_WATCHING_COMBINED -> rows.add(helper.loadContinueWatchingCombined())
+				HomeSectionType.NEW_RELEASES -> rows.add(helper.loadNewReleases())
 				HomeSectionType.NONE -> Unit
 			}
 

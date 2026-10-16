@@ -4,6 +4,7 @@ import android.content.Context
 import org.jellyfin.androidtv.R
 import org.jellyfin.androidtv.auth.repository.UserRepository
 import org.jellyfin.androidtv.constant.ChangeTriggerType
+import org.jellyfin.androidtv.constant.QueryType
 import org.jellyfin.androidtv.data.repository.ItemRepository
 import org.jellyfin.androidtv.preference.UserPreferences
 import org.jellyfin.androidtv.ui.browsing.BrowseRowDef
@@ -70,6 +71,18 @@ class HomeFragmentHelper(
 
 		return HomeFragmentBrowseRowDefRow(BrowseRowDef(context.getString(R.string.lbl_next_up), query, arrayOf(ChangeTriggerType.TvPlayback)))
 	}
+
+	fun loadContinueWatchingCombined(): HomeFragmentRow = HomeFragmentCustomRow(
+		title = context.getString(R.string.lbl_continue_watching),
+		queryType = QueryType.ContinueWatching,
+		changeTriggers = arrayOf(ChangeTriggerType.TvPlayback, ChangeTriggerType.MoviePlayback),
+	)
+
+	fun loadNewReleases(): HomeFragmentRow = HomeFragmentCustomRow(
+		title = context.getString(R.string.lbl_new_releases),
+		queryType = QueryType.NewReleases,
+		changeTriggers = arrayOf(ChangeTriggerType.LibraryUpdated, ChangeTriggerType.TvPlayback, ChangeTriggerType.MoviePlayback),
+	)
 
 	fun loadOnNow(): HomeFragmentRow {
 		val query = GetRecommendedProgramsRequest(
