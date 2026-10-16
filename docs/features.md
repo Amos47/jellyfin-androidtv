@@ -16,6 +16,8 @@ Statuses: **Planned** → **In progress** → **Implemented** (unit tested, buil
 | [New Releases section](#new-releases-section) | P1 | Implemented, device check pending |
 | [Portrait images on landscape cards](#portrait-images-on-landscape-cards) | P1 | Implemented, not installed yet |
 | [Series-level resume](#series-level-resume) | P1 | Implemented, not installed yet |
+| [Server settings saved reliably](#server-settings-saved-reliably) | P0 | Implemented, not installed yet |
+| [Series posters in Recently added](#series-posters-in-recently-added) | P1 | Implemented, not installed yet |
 | [Skip intro (server setup)](#skip-intro-server-setup) | P1 | Needs server plugin |
 | [CI/CD for the fork](#cicd-for-the-fork) | P1 | Planned |
 | [Artwork fallback on details screens](#artwork-fallback-on-details-screens) | P2 | Planned |
@@ -198,6 +200,28 @@ Statuses: **Planned** → **In progress** → **Implemented** (unit tested, buil
     shuffle).
   - Long-press → **Play all** still starts from the beginning.
   - Location: `KeyProcessor.java` (SERIES case) and `KeyProcessorHelper.playSeriesContinueEpisode`.
+
+## Server settings saved reliably
+
+- **Problem:**
+  - Home section choices were lost when the app restarted.
+  - Server-stored settings (`UserSettingPreferences`, `LiveTvPreferences`) were committed in a `LaunchedEffect` of the
+    settings screen. List screens navigate back right after a choice, which cancelled the network commit.
+  - The value only lived in memory, so the server had no `homesection*` keys at all. This is an **upstream bug**.
+- **Behavior:** `rememberPreference` commits server stores in the process lifecycle scope, so leaving the screen
+  doesn't cancel the save.
+- **Location:** `ui/settings/compat/rememberPreference.kt`.
+- **Upstream potential:** good candidate for an upstream PR.
+
+## Series posters in Recently added
+
+- **Problem:** "Recently added in Shows" showed a single new episode as a wide episode card. The server doesn't group a
+  single new episode into its series (Jellyfin 12, see #5684).
+- **Behavior:** episodes and seasons in recently added rows are replaced with their series. The row shows posters and
+  unwatched counts, at the position of the first occurrence, with no duplicates. This costs one extra request, and
+  only when the row contains episodes or seasons.
+- **Location:** `ItemRowAdapterHelper.retrieveLatestMedia`, and `CustomHomeRows.kt` (`replaceWithSeries`).
+- **Tests:** `CustomHomeRowsTests` (`replaceWithSeries`).
 
 ## Skip intro (server setup)
 
