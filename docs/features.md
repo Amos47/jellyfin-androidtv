@@ -118,9 +118,9 @@ Statuses: **Planned** → **In progress** → **Implemented** (unit tested, buil
   - `HomeSectionType.CONTINUE_WATCHING_COMBINED` (`custom_continuewatching`)
 - **Tests:** `CustomHomeRowsTests`.
 - **Compatibility:**
-  - The section is stored in the server display preferences shared with web and iPhone. Those clients render it as an
-    empty section.
-  - Use home slots that are "None" on the web, and avoid saving Home settings from the web.
+  - The server can't store this section type, so the slot is kept on the device and the server stores "None" for it.
+    Web and iPhone show nothing in that slot.
+  - Saving Home settings from the web resets that slot on the server, but the device keeps its own choice.
 - **Details:** [home-rows.md](home-rows.md).
 
 ## One card per show in Continue Watching
