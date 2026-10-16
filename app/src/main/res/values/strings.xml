@@ -434,6 +434,8 @@
     <string name="home_section_i">Home section %1$d</string>
     <string name="home_next_up_max_days">Next up date cutoff</string>
     <string name="home_next_up_max_days_disabled">Disabled</string>
+    <string name="next_up_rewatching_enabled">Enable rewatching in Next Up</string>
+    <string name="next_up_rewatching_enabled_description">Include already watched episodes so series you are rewatching show up</string>
     <string name="tv_provider_enabled">Integrate with Android TV home</string>
     <string name="tv_provider_enabled_description">Show Jellyfin channels and recommendations on the Android TV home screen</string>
     <string name="searchable_hint">Search Jellyfin</string>

@@ -12,7 +12,9 @@ import org.jellyfin.androidtv.constant.LiveTvOption
 import org.jellyfin.androidtv.data.querying.GetAdditionalPartsRequest
 import org.jellyfin.androidtv.data.querying.GetSpecialsRequest
 import org.jellyfin.androidtv.data.querying.GetTrailersRequest
+import org.jellyfin.androidtv.data.querying.withUserPreferences
 import org.jellyfin.androidtv.data.repository.UserViewsRepository
+import org.jellyfin.androidtv.preference.UserPreferences
 import org.jellyfin.androidtv.ui.GridButton
 import org.jellyfin.androidtv.ui.browsing.BrowseGridFragment.SortOption
 import org.jellyfin.sdk.api.client.ApiClient
@@ -97,11 +99,11 @@ fun ItemRowAdapter.retrieveResumeItems(api: ApiClient, query: GetResumeItemsRequ
 	}
 }
 
-fun ItemRowAdapter.retrieveNextUpItems(api: ApiClient, query: GetNextUpRequest) {
+fun ItemRowAdapter.retrieveNextUpItems(api: ApiClient, userPreferences: UserPreferences, query: GetNextUpRequest) {
 	ProcessLifecycleOwner.get().lifecycleScope.launch {
 		runCatching {
 			val response = withContext(Dispatchers.IO) {
-				api.tvShowsApi.getNextUp(query).content
+				api.tvShowsApi.getNextUp(query.withUserPreferences(userPreferences)).content
 			}
 
 			// Some special flavor for series, used in FullDetailsFragment
