@@ -60,6 +60,12 @@ class HomeFragmentCustomRow(
 // Continue watching
 
 /**
+ * Keep one item per series, using the first occurrence. Items that are not part of a series are kept as-is. Used to
+ * show a single in-progress episode per series in the resume row, which is ordered by last played.
+ */
+fun List<BaseItemDto>.distinctBySeries(): List<BaseItemDto> = distinctBy { item -> item.seriesId ?: item.id }
+
+/**
  * Combine in-progress items with next up episodes into a single list with one entry per series, ordered by most
  * recent activity.
  *

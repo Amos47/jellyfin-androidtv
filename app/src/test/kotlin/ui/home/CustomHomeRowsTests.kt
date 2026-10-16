@@ -147,6 +147,19 @@ class CustomHomeRowsTests : FunSpec({
 		}
 	}
 
+	context("distinctBySeries") {
+		test("Keeps the first (most recently played) episode per series and all movies") {
+			val officeRecent = episode("Office S02E04", office, 2, 4, lastPlayed = now.minusHours(1))
+			val movie = movie("Movie", lastPlayed = now.minusHours(2))
+			val friends = episode("Friends S01E12", bigBang, 1, 12, lastPlayed = now.minusHours(3))
+			val officeOlder = episode("Office S02E07", office, 2, 7, lastPlayed = now.minusDays(2))
+			val otherMovie = movie("Other movie", lastPlayed = now.minusDays(3))
+
+			listOf(officeRecent, movie, friends, officeOlder, otherMovie).distinctBySeries().names() shouldBe
+				listOf("Office S02E04", "Movie", "Friends S01E12", "Other movie")
+		}
+	}
+
 	context("collapseNewReleases") {
 		test("One card per show using the earliest unwatched new episode") {
 			val e6 = episode("SVU S26E06", svu, 26, 6, premiere = now.minusDays(2))
