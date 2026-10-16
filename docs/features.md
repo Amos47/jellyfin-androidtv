@@ -14,11 +14,12 @@ Statuses: **Planned** → **In progress** → **Implemented** (unit tested, buil
 | [One card per show in Continue Watching](#one-card-per-show-in-continue-watching) | P1 | Verified |
 | [Home refresh after settings changes](#home-refresh-after-settings-changes) | P1 | Implemented, device check pending |
 | [New Releases section](#new-releases-section) | P1 | Implemented, device check pending |
-| [Portrait images on landscape cards](#portrait-images-on-landscape-cards) | P1 | Implemented, not installed yet |
-| [Series-level resume](#series-level-resume) | P1 | Implemented, not installed yet |
-| [Server settings saved reliably](#server-settings-saved-reliably) | P0 | Implemented, not installed yet |
-| [Series posters in Recently added](#series-posters-in-recently-added) | P1 | Implemented, not installed yet |
-| [Skip intro (server setup)](#skip-intro-server-setup) | P1 | Needs server plugin |
+| [Portrait images on landscape cards](#portrait-images-on-landscape-cards) | P1 | Verified (letterboxing works) |
+| [Series-level resume](#series-level-resume) | P1 | Installed, device check pending |
+| [Server settings saved reliably](#server-settings-saved-reliably) | P0 | Verified (layout now stored on the server) |
+| [Fork home sections stored on device](#fork-home-sections-stored-on-device) | P0 | Implemented, not installed yet |
+| [Series posters in Recently added](#series-posters-in-recently-added) | P1 | Verified |
+| [Skip intro (server setup)](#skip-intro-server-setup) | P1 | Plugin installed, intro analysis not yet run |
 | [CI/CD for the fork](#cicd-for-the-fork) | P1 | Planned |
 | [Artwork fallback on details screens](#artwork-fallback-on-details-screens) | P2 | Planned |
 | [Upstream sync automation](#upstream-sync-automation) | P2 | Planned |
@@ -162,17 +163,20 @@ Statuses: **Planned** → **In progress** → **Implemented** (unit tested, buil
 
 ## Portrait images on landscape cards
 
-- **Problem:** new episodes without a still, backdrop or thumb fell back to the series poster. A 2:3 poster
-  center-cropped into a 16:9 card kept only its middle band, cutting off heads and titles. Seen on Cupertino and
-  Law & Order S26.
+- **Problem:** Cupertino S01E02 and Law & Order S26E02 showed cropped heads. Their episode images are portrait
+  380×562 `-thumb.jpg` sidecar files written by **Sonarr**. A 16:9 center crop of a portrait image keeps only its
+  middle band. The rest of the library's episode images are 16:9. An earlier guess that the series poster fallback was
+  responsible was wrong: those shows have backdrops and thumbs.
 - **Behavior:** portrait images are fitted inside landscape cards over a background decoded from the image's
-  blurhash. Portrait means series or parent posters, or images the server reports as taller than wide. No extra
-  requests are made.
+  blurhash. Portrait means the server reports the image as taller than wide (`primaryImageAspectRatio`), or it is a
+  series or parent poster. No extra requests are made.
 - **Location:** `CardPresenter.kt` (letterbox), `EpisodeImages.kt` (`JellyfinImage.isPortrait`), and
   `AsyncImage.kt`, which now applies the scale type on every update.
 - **Tests:** `EpisodeImagesTests` (`isPortrait`).
-- **Limitation:** when the episode image fails to load and the load-time fallback reaches a poster, the poster is
-  still cropped, because the card decides on letterboxing from metadata before loading.
+- **Open:**
+  - The Sonarr thumbs themselves. The user asked to hold this; don't delete Sonarr-managed files by hand.
+  - Possibly rank portrait episode images below the 16:9 backdrop and thumb.
+- **Limitation:** a load-time fallback that reaches a poster is still cropped.
 
 ## Series-level resume
 
@@ -213,6 +217,19 @@ Statuses: **Planned** → **In progress** → **Implemented** (unit tested, buil
 - **Location:** `ui/settings/compat/rememberPreference.kt`.
 - **Upstream potential:** good candidate for an upstream PR.
 
+## Fork home sections stored on device
+
+- **Problem:** the server only stores home section types it knows, and replaces unknown values with that slot's
+  default (`DisplayPreferencesController`). The fork's sections reverted after an app restart.
+- **Behavior:**
+  - Fork section types are kept per slot on the device (`UserPreferences.localHomeSections`), and the server stores
+    "None" for that slot.
+  - Standard sections still sync through the server.
+  - After installing, the fork sections must be chosen once more.
+- **Location:** `preference/LocalHomeSections.kt`, and `UserSettingPreferences.getEnum` and `setEnum`.
+- **Tests:** `LocalHomeSectionsTests`, `UserSettingPreferencesTests`.
+- **Limitation:** per device, not per Jellyfin user.
+
 ## Series posters in Recently added
 
 - **Problem:** "Recently added in Shows" showed a single new episode as a wide episode card. The server doesn't group a
@@ -225,7 +242,8 @@ Statuses: **Planned** → **In progress** → **Implemented** (unit tested, buil
 
 ## Skip intro (server setup)
 
-- **Status:** no app change is needed. The app already shows an "ask to skip" button for intro and outro segments
+- **Status:** the Intro Skipper 12.0.5.0 plugin was installed on 2026-10-16. Its detection task still needs to run;
+  `MediaSegments` was empty when checked. No app change is needed. The app already shows an "ask to skip" button for intro and outro segments
   (Settings → Playback → Media segments), in both players.
 - **Finding (2026-10-16):**
   - The server (Jellyfin 12.2.0, on the Mac) has no segment plugin installed, and its `MediaSegments` table is empty.
