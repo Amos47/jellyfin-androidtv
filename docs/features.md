@@ -14,6 +14,7 @@ Statuses: **Planned** → **In progress** → **Implemented** (unit tested, buil
 | [One card per show in Continue Watching](#one-card-per-show-in-continue-watching) | P1 | Verified |
 | [Home refresh after settings changes](#home-refresh-after-settings-changes) | P1 | Implemented, device check pending |
 | [New Releases section](#new-releases-section) | P1 | Implemented, device check pending |
+| [Portrait images on landscape cards](#portrait-images-on-landscape-cards) | P1 | Implemented, not installed yet |
 | [Series-level resume (Play button)](#series-level-resume) | P1 | Planned |
 | [CI/CD for the fork](#cicd-for-the-fork) | P1 | Planned |
 | [Artwork fallback on details screens](#artwork-fallback-on-details-screens) | P2 | Planned |
@@ -155,6 +156,20 @@ Statuses: **Planned** → **In progress** → **Implemented** (unit tested, buil
   - `HomeSectionType.NEW_RELEASES` (`custom_newreleases`)
 - **Tests:** `CustomHomeRowsTests`.
 - **Limitations:** depends on release-date metadata. Items without a premiere date never appear.
+
+## Portrait images on landscape cards
+
+- **Problem:** new episodes without a still, backdrop or thumb fell back to the series poster. A 2:3 poster
+  center-cropped into a 16:9 card kept only its middle band, cutting off heads and titles. Seen on Cupertino and
+  Law & Order S26.
+- **Behavior:** portrait images are fitted inside landscape cards over a background decoded from the image's
+  blurhash. Portrait means series or parent posters, or images the server reports as taller than wide. No extra
+  requests are made.
+- **Location:** `CardPresenter.kt` (letterbox), `EpisodeImages.kt` (`JellyfinImage.isPortrait`), and
+  `AsyncImage.kt`, which now applies the scale type on every update.
+- **Tests:** `EpisodeImagesTests` (`isPortrait`).
+- **Limitation:** when the episode image fails to load and the load-time fallback reaches a poster, the poster is
+  still cropped, because the card decides on letterboxing from metadata before loading.
 
 ## Series-level resume
 
