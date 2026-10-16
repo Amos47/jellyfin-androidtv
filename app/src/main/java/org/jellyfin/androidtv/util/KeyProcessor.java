@@ -88,6 +88,9 @@ public class KeyProcessor {
                                 playbackHelper.getValue().retrieveAndPlay(item.getId(), false, activity);
                                 return true;
                             case SERIES:
+                                // Personal fork: continue where the user left off, fall back to the play menu
+                                KeyProcessorHelperKt.playSeriesContinueEpisode(activity, item.getId(), () -> createPlayMenu(rowItem, false, activity));
+                                return true;
                             case SEASON:
                             case BOX_SET:
                                 createPlayMenu(rowItem, false, activity);

@@ -7,6 +7,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.jellyfin.androidtv.R
+import org.jellyfin.androidtv.preference.UserPreferences
+import org.jellyfin.androidtv.ui.itemdetail.getSeriesContinueEpisode
 import org.jellyfin.sdk.api.client.ApiClient
 import org.jellyfin.sdk.api.client.extensions.itemsApi
 import org.jellyfin.sdk.model.api.ItemFilter
@@ -56,5 +58,26 @@ fun FragmentActivity.playFirstUnwatchedItem(parentId: UUID) {
 				).show()
 			},
 		)
+	}
+}
+
+/**
+ * Personal fork: continue a series where the user left off (the in-progress episode, otherwise next up). Runs
+ * [onNothingToContinue] when there is no episode to continue with, like for a never watched or finished series.
+ */
+fun FragmentActivity.playSeriesContinueEpisode(seriesId: UUID, onNothingToContinue: Runnable) {
+	val api by inject<ApiClient>()
+	val userPreferences by inject<UserPreferences>()
+	val playbackHelper by inject<PlaybackHelper>()
+
+	lifecycleScope.launch {
+		val episode = runCatching {
+			withContext(Dispatchers.IO) { api.getSeriesContinueEpisode(seriesId, userPreferences) }
+		}.onFailure { error ->
+			Timber.w(error, "Failed to get episode to continue series with")
+		}.getOrNull()
+
+		if (episode != null) playbackHelper.retrieveAndPlay(episode.id, false, this@playSeriesContinueEpisode)
+		else onNothingToContinue.run()
 	}
 }
