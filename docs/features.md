@@ -17,7 +17,7 @@ Statuses: **Planned** → **In progress** → **Implemented** (unit tested, buil
 | [Portrait images on landscape cards](#portrait-images-on-landscape-cards) | P1 | Verified (letterboxing works) |
 | [Series-level resume](#series-level-resume) | P1 | Installed, device check pending |
 | [Server settings saved reliably](#server-settings-saved-reliably) | P0 | Verified (layout now stored on the server) |
-| [Fork home sections stored on device](#fork-home-sections-stored-on-device) | P0 | Implemented, not installed yet |
+| [Per-user home section overrides](#per-user-home-section-overrides) | P0 | Implemented, not installed yet |
 | [Series posters in Recently added](#series-posters-in-recently-added) | P1 | Verified |
 | [Skip intro (server setup)](#skip-intro-server-setup) | P1 | Plugin installed, intro analysis not yet run |
 | [CI/CD for the fork](#cicd-for-the-fork) | P1 | Planned |
@@ -119,9 +119,8 @@ Statuses: **Planned** → **In progress** → **Implemented** (unit tested, buil
   - `HomeSectionType.CONTINUE_WATCHING_COMBINED` (`custom_continuewatching`)
 - **Tests:** `CustomHomeRowsTests`.
 - **Compatibility:**
-  - The server can't store this section type, so the slot is kept on the device and the server stores "None" for it.
-    Web and iPhone show nothing in that slot.
-  - Saving Home settings from the web resets that slot on the server, but the device keeps its own choice.
+  - Used as a per-user **This TV only** override on top of the server layout. The server can't store this section
+    type. Web and iPhone keep the slot's standard section.
 - **Details:** [home-rows.md](home-rows.md).
 
 ## One card per show in Continue Watching
@@ -217,18 +216,23 @@ Statuses: **Planned** → **In progress** → **Implemented** (unit tested, buil
 - **Location:** `ui/settings/compat/rememberPreference.kt`.
 - **Upstream potential:** good candidate for an upstream PR.
 
-## Fork home sections stored on device
+## Per-user home section overrides
 
-- **Problem:** the server only stores home section types it knows, and replaces unknown values with that slot's
-  default (`DisplayPreferencesController`). The fork's sections reverted after an app restart.
+- **Problem:**
+  - The server only stores home section types it knows, and replaces unknown values with the slot default. The fork's
+    sections reverted after a restart.
+  - A first fix stored "None" on the server for those slots. That left web and iPhone with empty slots, and the
+    device-wide storage was shared between users.
 - **Behavior:**
-  - Fork section types are kept per slot on the device (`UserPreferences.localHomeSections`), and the server stores
-    "None" for that slot.
-  - Standard sections still sync through the server.
-  - After installing, the fork sections must be chosen once more.
-- **Location:** `preference/LocalHomeSections.kt`, and `UserSettingPreferences.getEnum` and `setEnum`.
-- **Tests:** `LocalHomeSectionsTests`, `UserSettingPreferencesTests`.
-- **Limitation:** per device, not per Jellyfin user.
+  - The server layout is unchanged and stays standard for other clients.
+  - Each slot can have a **This TV only** override for the signed-in user: Continue watching (combined), New
+    releases, or Hidden.
+  - Overrides are stored locally per Jellyfin user ID.
+  - The home settings list shows "X on this TV, Y elsewhere".
+- **Location:** `preference/HomeSectionOverrides.kt`, `UserSettingPreferences` (`homeSectionOverrides`,
+  `setHomeSectionOverride`, `activeHomesections`), and `SettingsHomeSectionScreen` / `SettingsHomeScreen`.
+- **Tests:** `HomeSectionOverridesTests`, `UserSettingPreferencesTests`, including per-user isolation.
+- **Details:** [home-rows.md](home-rows.md#storage-and-other-clients).
 
 ## Series posters in Recently added
 
