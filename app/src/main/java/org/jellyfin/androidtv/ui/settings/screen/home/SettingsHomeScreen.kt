@@ -7,6 +7,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import org.jellyfin.androidtv.R
+import org.jellyfin.androidtv.constant.HomeSectionType
 import org.jellyfin.androidtv.preference.UserPreferences
 import org.jellyfin.androidtv.preference.UserSettingPreferences
 import org.jellyfin.androidtv.ui.base.Text
@@ -35,9 +36,22 @@ fun SettingsHomeScreen() {
 		}
 
 		itemsIndexed(userSettingPreferences.homesections) { index, section ->
+			val serverName = stringResource(userSettingPreferences[section].nameRes)
+			val caption = when (val sectionOverride = userSettingPreferences.homeSectionOverrides[index]) {
+				null -> serverName
+				else -> stringResource(
+					R.string.home_section_override_caption,
+					when (sectionOverride) {
+						HomeSectionType.NONE -> stringResource(R.string.home_section_override_hidden_short)
+						else -> stringResource(sectionOverride.nameRes)
+					},
+					serverName,
+				)
+			}
+
 			ListButton(
 				headingContent = { Text(stringResource(R.string.home_section_i, index + 1)) },
-				captionContent = { Text(stringResource(userSettingPreferences[section].nameRes)) },
+				captionContent = { Text(caption) },
 				onClick = { router.push(Routes.HOME_SECTION, mapOf("index" to index.toString())) },
 				modifier = Modifier.focusKey("home_section_$index")
 			)

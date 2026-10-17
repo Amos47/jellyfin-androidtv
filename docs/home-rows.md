@@ -1,6 +1,7 @@
 # Home rows
 
-The fork adds two home section types, picked in Settings → Home → Home section N:
+The fork adds two home section types. They're used as **per-user overrides on this TV** (see below), picked in
+Settings → Home → Home section N → This TV only:
 
 | Picker label | Row title | Stored value |
 |---|---|---|
@@ -42,19 +43,26 @@ positioned by their newest release. Items without a release date never appear.
 
 ## Storage and other clients
 
-Home sections are normally stored in the **server** display preferences (`usersettings`, client `emby`), shared with
-jellyfin-web and the iPhone app.
+The **server** layout stays the source of truth for every client. It is stored in the display preferences
+(`usersettings`, client `emby`) and shared with jellyfin-web and the iPhone app. On top of that, each slot can have a
+**per-user override on this device**:
 
-- The server only stores section types it knows (`DisplayPreferencesController`). It replaces unknown values with the
-  default section for that slot.
-- The fork's section types are therefore kept **on the device**, per slot:
-  - Stored in `UserPreferences.localHomeSections`, e.g. `3=custom_continuewatching`.
-  - Handled in `UserSettingPreferences.getEnum` and `setEnum`, with parsing in `preference/LocalHomeSections.kt`.
-  - The server stores `none` for those slots, so the web and iPhone show nothing there.
-- Choosing a standard section for a slot clears its local override and syncs through the server as usual.
-- Limitation: the local overrides apply to the device, not per Jellyfin user.
-- Server-stored settings are committed outside the settings screen's composition (`rememberPreference`). Before this,
-  navigating back cancelled the commit, so section changes were never saved on the server (an upstream bug).
+| Slot | All devices (server) | This TV only (override) |
+|---|---|---|
+| 1 | Continue watching (in progress only) | Continue watching (combined) |
+| 2 | Next up | Hidden |
+| 3 | Latest media | (none: same as all devices) |
+
+- **Settings:** Settings → Home → Home section N has two groups. **All devices** holds the standard sections, saved on
+  the server. **This TV only** holds "Same as all devices", Continue watching, New releases and "Hidden on this TV".
+- **Why fork sections can't go on the server:** the server only stores section types it knows. It replaces unknown
+  values with the slot's default (`DisplayPreferencesController`).
+- **Storage:** overrides are local SharedPreferences, one key per Jellyfin user (`home_section_overrides_<userId>`), so
+  household members on the same TV don't share them. Signed out means no overrides. See
+  `preference/HomeSectionOverrides.kt` and `UserSettingPreferences.homeSectionOverrides` / `setHomeSectionOverride`.
+- **Other clients** keep their standard sections and never see the overrides.
+- **Saving:** server settings are committed outside the settings screen's composition (`rememberPreference`). Before,
+  navigating back cancelled the commit, so section changes were never saved (an upstream bug).
 
 ## Refreshing after settings changes
 

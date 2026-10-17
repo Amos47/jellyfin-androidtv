@@ -1,8 +1,8 @@
 package org.jellyfin.androidtv.preference
 
+import org.jellyfin.androidtv.auth.repository.UserRepository
 import org.jellyfin.androidtv.constant.HomeSectionType
 import org.jellyfin.androidtv.preference.store.DisplayPreferencesStore
-import org.jellyfin.preference.Preference
 import org.jellyfin.preference.enumPreference
 import org.jellyfin.preference.intPreference
 import org.jellyfin.sdk.api.client.ApiClient
@@ -10,6 +10,7 @@ import org.jellyfin.sdk.api.client.ApiClient
 class UserSettingPreferences(
 	api: ApiClient,
 	private val userPreferences: UserPreferences,
+	private val userRepository: UserRepository,
 ) : DisplayPreferencesStore(
 	displayPreferencesId = "usersettings",
 	api = api,
@@ -45,37 +46,26 @@ class UserSettingPreferences(
 	)
 
 	/**
-	 * Personal fork: home section types the server can't store are kept on the device, see [LocalHomeSectionTypes].
+	 * Personal fork: home section overrides of the current user on this device, see HomeSectionOverrides.kt.
 	 */
-	private var localHomeSections: Map<Int, HomeSectionType>
-		get() = parseLocalHomeSections(userPreferences[UserPreferences.localHomeSections])
-		set(value) {
-			userPreferences[UserPreferences.localHomeSections] = value.toLocalHomeSectionsString()
+	private val homeSectionOverridesPreference
+		get() = userRepository.currentUser.value?.id?.let(::homeSectionOverridesPreference)
+
+	val homeSectionOverrides: Map<Int, HomeSectionType>
+		get() = homeSectionOverridesPreference?.let { parseHomeSectionOverrides(userPreferences[it]) }.orEmpty()
+
+	/**
+	 * Set the override for a home section slot on this device, or remove it with null.
+	 */
+	fun setHomeSectionOverride(index: Int, type: HomeSectionType?) {
+		val preference = homeSectionOverridesPreference ?: return
+		val overrides = when (type) {
+			null -> homeSectionOverrides - index
+			else -> homeSectionOverrides + (index to type)
 		}
-
-	override fun <T : Enum<T>> getEnum(preference: Preference<T>): T {
-		val localType = homeSectionIndex(preference.key)?.let { index -> localHomeSections[index] }
-		@Suppress("UNCHECKED_CAST")
-		if (localType != null && preference.type == HomeSectionType::class) return localType as T
-
-		return super.getEnum(preference)
-	}
-
-	override fun <V : Enum<V>> setEnum(preference: Preference<*>, value: Enum<V>) {
-		val index = homeSectionIndex(preference.key)
-		if (index == null || value !is HomeSectionType) return super.setEnum(preference, value)
-
-		if (value in LocalHomeSectionTypes) {
-			localHomeSections = localHomeSections + (index to value)
-			super.setEnum(preference, HomeSectionType.NONE)
-		} else {
-			localHomeSections = localHomeSections - index
-			super.setEnum(preference, value)
-		}
+		userPreferences[preference] = overrides.toHomeSectionOverridesString()
 	}
 
 	val activeHomesections
-		get() = homesections
-			.map(::get)
-			.filterNot { it == HomeSectionType.NONE }
+		get() = resolveHomeSections(homesections.map(::get), homeSectionOverrides)
 }

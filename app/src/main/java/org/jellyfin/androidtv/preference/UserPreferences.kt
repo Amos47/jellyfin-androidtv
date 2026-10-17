@@ -229,11 +229,6 @@ class UserPreferences(context: Context) : SharedPreferenceStore(
 		var homeNewReleasesMaxDays = intPreference("home_new_releases_max_days", 30)
 
 		/**
-		 * Home sections stored on the device because the server can't store them, see [LocalHomeSectionTypes].
-		 */
-		var localHomeSections = stringPreference("home_local_sections", "")
-
-		/**
 		 * Subtitles foreground color
 		 */
 		var subtitlesBackgroundColor = longPreference("subtitles_background_color", 0x00FFFFFF)

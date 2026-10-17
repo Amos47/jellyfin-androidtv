@@ -12,7 +12,7 @@ val preferenceModule = module {
 	single { PreferencesRepository(get(), get(), get()) }
 
 	single { LiveTvPreferences(get()) }
-	single { UserSettingPreferences(get(), get()) }
+	single { UserSettingPreferences(get(), get(), get()) }
 	single { UserPreferences(get()) }
 	single { SystemPreferences(get()) }
 	single { TelemetryPreferences(get()) }
