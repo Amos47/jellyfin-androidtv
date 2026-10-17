@@ -437,6 +437,14 @@
     <string name="home_section_continue_watching_combined">Continue watching</string>
     <string name="home_section_new_releases">New releases</string>
     <string name="lbl_new_releases">New releases</string>
+    <string name="home_section_all_devices">All devices</string>
+    <string name="home_section_all_devices_description">Saved to your account, used by every Jellyfin app</string>
+    <string name="home_section_this_device">This TV only</string>
+    <string name="home_section_this_device_description">Replace or hide this section on this TV for your account</string>
+    <string name="home_section_override_none">Same as all devices</string>
+    <string name="home_section_override_hidden">Hidden on this TV</string>
+    <string name="home_section_override_hidden_short">Hidden</string>
+    <string name="home_section_override_caption">%1$s on this TV, %2$s elsewhere</string>
     <string name="home_new_releases_max_days">New releases period</string>
     <string name="next_up_rewatching_enabled">Enable rewatching in Next Up</string>
     <string name="next_up_rewatching_enabled_description">Include already watched episodes so series you are rewatching show up</string>

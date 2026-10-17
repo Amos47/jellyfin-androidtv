@@ -24,7 +24,7 @@ enum class HomeSectionType(
 	NONE("none", R.string.home_section_none),
 
 	// Personal fork sections, prefixed to avoid clashing with future jellyfin-web sections. The server can't store these,
-	// so they are kept on the device (see LocalHomeSections.kt).
+	// so they are only used as per-user overrides on the device (see HomeSectionOverrides.kt).
 	CONTINUE_WATCHING_COMBINED("custom_continuewatching", R.string.home_section_continue_watching_combined),
 	NEW_RELEASES("custom_newreleases", R.string.home_section_new_releases),
 }
