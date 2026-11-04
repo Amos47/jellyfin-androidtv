@@ -81,6 +81,7 @@ class LeanbackChannelWorker(
 		private const val PERIODIC_UPDATE_REQUEST_NAME = "LeanbackChannelPeriodicUpdateRequest"
 		private const val CHANNEL_STORE_NAME = "leanback_channels"
 		private const val SERVER_ROW_CHANNEL = "home_row"
+		private const val WATCH_NEXT_ORDER_STEP_MS = 60_000L
 		private val STANDARD_CHANNELS = listOf("latest_media", "my_media", "next_up", "latest_movies", "latest_episodes")
 
 		/**
@@ -226,7 +227,23 @@ class LeanbackChannelWorker(
 		context.contentResolver.delete(TvContractCompat.PreviewPrograms.CONTENT_URI, null, null)
 		(STANDARD_CHANNELS + SERVER_ROW_CHANNEL).forEach(::deleteChannel)
 
-		updateWatchNext(row?.items?.items.orEmpty())
+		// Replace the whole list, so programs keep the row's order: the launcher sorts Watch Next by engagement time, so
+		// the first item gets the latest time. Items the user removed from the launcher stay removed.
+		val current = getCurrentWatchNext()
+		val removedByUser = current.filterNot { it.isBrowsable }.mapNotNull { it.internalProviderId }.toSet()
+		current.filter { it.isBrowsable }
+			.forEach { context.contentResolver.delete(TvContractCompat.buildWatchNextProgramUri(it.id), null, null) }
+
+		val now = Instant.now().toEpochMilli()
+		val programs = row?.items?.items.orEmpty()
+			.filterNot { it.id.toString() in removedByUser }
+			.mapIndexed { index, item ->
+				WatchNextProgram.Builder(getBaseItemAsWatchNextProgram(item))
+					.setLastEngagementTimeUtcMillis(now - index * WATCH_NEXT_ORDER_STEP_MS)
+					.build()
+					.toContentValues()
+			}
+		context.contentResolver.bulkInsert(WatchNextPrograms.CONTENT_URI, programs.toTypedArray())
 	}
 
 	/** Deletes a channel created by [getChannelUri], if it exists. */
