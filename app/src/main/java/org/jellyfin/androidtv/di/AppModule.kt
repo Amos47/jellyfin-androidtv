@@ -16,6 +16,9 @@ import org.jellyfin.androidtv.auth.repository.ServerRepository
 import org.jellyfin.androidtv.auth.repository.UserRepository
 import org.jellyfin.androidtv.auth.repository.UserRepositoryImpl
 import org.jellyfin.androidtv.data.eventhandling.SocketHandler
+import org.jellyfin.androidtv.data.homerows.HomeRowsApi
+import org.jellyfin.androidtv.data.homerows.OkHttpHomeRowsTransport
+import org.jellyfin.sdk.api.client.ApiClient
 import org.jellyfin.androidtv.data.model.DataRefreshService
 import org.jellyfin.androidtv.data.repository.CustomMessageRepository
 import org.jellyfin.androidtv.data.repository.CustomMessageRepositoryImpl
@@ -106,6 +109,9 @@ val appModule = module {
 		// Create an empty API instance, the actual values are set by the SessionRepository
 		get<JellyfinSdk>().createApi(httpClientOptions = get<HttpClientOptions>())
 	}
+
+	// Personal fork: Custom Home Rows, see docs/home-rows.md
+	single { HomeRowsApi(OkHttpHomeRowsTransport(get(), get())) { get<ApiClient>().baseUrl.orEmpty() } }
 
 	single { SocketHandler(get(), get(), get(), get(), get(), get(), get(), get(), get(), ProcessLifecycleOwner.get().lifecycle) }
 
