@@ -5,6 +5,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.res.stringResource
 import org.jellyfin.androidtv.R
+import org.jellyfin.androidtv.data.homerows.LeaveChoice
 import org.jellyfin.androidtv.ui.navigation.LocalRouter
 import org.jellyfin.androidtv.ui.settings.composable.SettingsConfirmDialog
 
@@ -18,14 +19,11 @@ fun HomeRowsLeavePrompt(onCloseSettings: () -> Unit) {
 	val editor = rememberHomeRowsEditor()
 	val target by editor.leavePrompt.collectAsState()
 
-	fun leave(to: LeaveTarget) {
-		editor.cancelLeave()
-		when (to) {
-			LeaveTarget.BACK -> router.back()
-			LeaveTarget.CLOSE_SETTINGS -> {
-				editor.clear()
-				onCloseSettings()
-			}
+	fun leave(to: LeaveTarget) = when (to) {
+		LeaveTarget.BACK -> router.back()
+		LeaveTarget.CLOSE_SETTINGS -> {
+			editor.clear()
+			onCloseSettings()
 		}
 	}
 
@@ -34,17 +32,8 @@ fun HomeRowsLeavePrompt(onCloseSettings: () -> Unit) {
 		title = stringResource(R.string.home_rows_unsaved_title),
 		message = stringResource(R.string.home_rows_unsaved_message),
 		actions = listOf(
-			stringResource(R.string.home_rows_save) to {
-				val to = target
-				editor.save { saved ->
-					if (saved && to != null) leave(to) else editor.cancelLeave()
-				}
-			},
-			stringResource(R.string.home_rows_discard) to {
-				val to = target
-				editor.discard()
-				if (to != null) leave(to)
-			},
+			stringResource(R.string.home_rows_save) to { editor.chooseLeave(LeaveChoice.SAVE, ::leave) },
+			stringResource(R.string.home_rows_discard) to { editor.chooseLeave(LeaveChoice.DISCARD, ::leave) },
 			stringResource(R.string.home_rows_keep_editing) to { editor.cancelLeave() },
 		),
 		onDismissRequest = { editor.cancelLeave() },

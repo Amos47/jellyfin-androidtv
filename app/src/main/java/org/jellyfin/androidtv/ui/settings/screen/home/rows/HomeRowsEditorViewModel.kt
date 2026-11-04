@@ -10,6 +10,7 @@ import kotlinx.serialization.json.JsonElement
 import org.jellyfin.androidtv.data.homerows.HomeRowsApi
 import org.jellyfin.androidtv.data.homerows.HomeRowsEditor
 import org.jellyfin.androidtv.data.homerows.HomeRowsEditorState
+import org.jellyfin.androidtv.data.homerows.LeaveChoice
 import timber.log.Timber
 
 /** Where the user was going when they were asked about unsaved edits. */
@@ -70,6 +71,19 @@ class HomeRowsEditorViewModel(private val api: HomeRowsApi) : ViewModel() {
 			sync()
 			_busy.value = false
 			onDone(result)
+		}
+	}
+
+	/**
+	 * Applies a prompt choice once: further presses are ignored while it runs, and [leave] gets the target only if the
+	 * prompt is still open when it finishes.
+	 */
+	fun chooseLeave(choice: LeaveChoice, leave: (LeaveTarget) -> Unit) {
+		val target = _leavePrompt.value ?: return
+		run({ resolveLeave(choice) }) { mayLeave ->
+			val stillAsked = _leavePrompt.value == target
+			_leavePrompt.value = null
+			if (mayLeave && stillAsked) leave(target)
 		}
 	}
 

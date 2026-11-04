@@ -57,6 +57,9 @@ fun mapSaveErrors(rows: List<EditorRow>, errors: Map<String, List<String>>): Map
 	return mapped
 }
 
+/** The choices when leaving the editor with unsaved edits. */
+enum class LeaveChoice { SAVE, DISCARD, KEEP_EDITING }
+
 class HomeRowsEditor(private val api: HomeRowsApi) {
 	private val _state = MutableStateFlow(HomeRowsEditorState())
 	val state: StateFlow<HomeRowsEditorState> = _state.asStateFlow()
@@ -142,7 +145,14 @@ class HomeRowsEditor(private val api: HomeRowsApi) {
 		}
 	}
 
-	fun discard() = _state.update { it.copy(rows = toEditorRows(it.savedRows), errors = emptyMap(), generalError = null) }
+	/** Applies a choice from the unsaved-edits prompt. Returns true when the user may leave. */
+	suspend fun resolveLeave(choice: LeaveChoice): Boolean = when (choice) {
+		LeaveChoice.SAVE -> save()
+		LeaveChoice.DISCARD -> true.also { discard() }
+		LeaveChoice.KEEP_EDITING -> false
+	}
+
+		fun discard() = _state.update { it.copy(rows = toEditorRows(it.savedRows), errors = emptyMap(), generalError = null) }
 
 	/** Removes the user's own layout and shows the inherited one. Pending edits are dropped. */
 	suspend fun reset(): Boolean = act { api.resetConfiguration() } && reload()

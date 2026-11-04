@@ -239,3 +239,33 @@ class HomeRowsEditorTests : FunSpec({
 		editor.state.value.hasPendingEdits shouldBe false
 	}
 })
+
+class HomeRowsLeaveTests : FunSpec({
+	test("Save leaves only when the save succeeds") {
+		val server = FakeServer("[${row()}]")
+		val editor = server.editor()
+		editor.load()
+		editor.add("next-up")
+
+		server.putStatus = 400
+		server.putBody = """{"errors":{}}"""
+		editor.resolveLeave(LeaveChoice.SAVE) shouldBe false
+		editor.state.value.hasPendingEdits shouldBe true
+
+		server.putStatus = 200
+		editor.resolveLeave(LeaveChoice.SAVE) shouldBe true
+		editor.state.value.hasPendingEdits shouldBe false
+	}
+
+	test("Discard leaves and drops the edits; Keep editing stays") {
+		val editor = FakeServer("[${row()}]").editor()
+		editor.load()
+		editor.add("next-up")
+
+		editor.resolveLeave(LeaveChoice.KEEP_EDITING) shouldBe false
+		editor.state.value.hasPendingEdits shouldBe true
+
+		editor.resolveLeave(LeaveChoice.DISCARD) shouldBe true
+		editor.state.value.hasPendingEdits shouldBe false
+	}
+})

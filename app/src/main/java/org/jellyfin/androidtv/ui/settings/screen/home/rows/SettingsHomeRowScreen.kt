@@ -120,10 +120,8 @@ fun SettingsHomeRowScreen(key: String) {
 		item {
 			ListButton(
 				headingContent = { Text(stringResource(R.string.home_rows_remove)) },
-				onClick = {
-					editor.remove(key)
-					router.back()
-				},
+				// The effect above goes back once the row is gone; popping here too would leave the list as well.
+				onClick = { editor.remove(key) },
 				modifier = Modifier.focusKey("remove"),
 			)
 		}
