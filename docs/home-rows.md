@@ -31,8 +31,9 @@ of rows, each from a server **provider** with its own settings. The TV treats ro
     messages on the rows.
 - **Moved settings:** the Next Up cutoff and New releases period are row settings on the server, so the TV hides its
   local versions. "Enable rewatching in Next Up" stays: series Resume, library Next Up and the launcher still use it.
-- **TV launcher:** on a HomeRows server, `LeanbackChannelWorker` publishes one launcher row: the first shown row that
-  isn't a library row (`launcherRow`), with its title and items. The standard channels and Watch Next are removed. If
+- **TV launcher:** on a HomeRows server, `LeanbackChannelWorker` publishes one launcher row: the items of the first
+  shown row that isn't a library row (`launcherRow`) go to **Watch Next**, which is what the Fire TV home shows for
+  apps. Preview channels are not shown on the Fire TV, so the standard channels are removed. If
   the layout fails to load, the worker retries later instead of publishing the standard channels. On a stock server,
   the standard five channels stay.
 - **Refresh:** every successful save, reset or default change bumps `HomeRowsApi.revision`, which is part of the

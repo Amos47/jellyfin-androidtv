@@ -218,33 +218,15 @@ class LeanbackChannelWorker(
 	}
 
 	/**
-	 * Publishes one launcher row from the server's home rows (personal fork, Custom Home Rows), or none when [row] is
-	 * null. The standard channels and Watch Next are removed, so the app shows exactly one row on the TV home.
+	 * Publishes one launcher row from the server's home rows (personal fork, Custom Home Rows): the items of [row] go to
+	 * Watch Next, which is the row the Fire TV home shows for apps. Preview channels, including the standard ones, are
+	 * removed, so the app shows exactly one row. A null [row] clears Watch Next.
 	 */
 	private fun publishServerRow(row: LoadedServerRow?) {
 		context.contentResolver.delete(TvContractCompat.PreviewPrograms.CONTENT_URI, null, null)
-		context.contentResolver.delete(WatchNextPrograms.CONTENT_URI, null, null)
-		STANDARD_CHANNELS.forEach(::deleteChannel)
+		(STANDARD_CHANNELS + SERVER_ROW_CHANNEL).forEach(::deleteChannel)
 
-		if (row == null) {
-			deleteChannel(SERVER_ROW_CHANNEL)
-			return
-		}
-
-		val channel = getChannelUri(
-			SERVER_ROW_CHANNEL, Channel.Builder()
-				.setType(TvContractCompat.Channels.TYPE_PREVIEW)
-				.setDisplayName(row.title)
-				.setAppLinkIntent(Intent(context, StartupActivity::class.java))
-				.build(),
-			default = true
-		) ?: return Timber.e("Skipping the home row channel because it was not available")
-
-		val preferParentThumb = userPreferences[UserPreferences.seriesThumbnailsEnabled]
-		context.contentResolver.bulkInsert(
-			TvContractCompat.PreviewPrograms.CONTENT_URI,
-			row.items.items.map { item -> createPreviewProgram(channel, item, preferParentThumb) }.toTypedArray()
-		)
+		updateWatchNext(row?.items?.items.orEmpty())
 	}
 
 	/** Deletes a channel created by [getChannelUri], if it exists. */
