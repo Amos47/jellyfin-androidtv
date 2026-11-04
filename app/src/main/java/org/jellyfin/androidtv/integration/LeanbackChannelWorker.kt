@@ -28,6 +28,10 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.withContext
 import org.jellyfin.androidtv.R
+import org.jellyfin.androidtv.data.homerows.HomeRowsApi
+import org.jellyfin.androidtv.ui.home.serverrows.LoadedServerRow
+import org.jellyfin.androidtv.ui.home.serverrows.buildServerRows
+import org.jellyfin.androidtv.ui.home.serverrows.launcherRow
 import org.jellyfin.androidtv.data.querying.withUserPreferences
 import org.jellyfin.androidtv.data.repository.ItemRepository
 import org.jellyfin.androidtv.data.repository.UserViewsRepository
@@ -76,6 +80,8 @@ class LeanbackChannelWorker(
 	companion object {
 		private const val PERIODIC_UPDATE_REQUEST_NAME = "LeanbackChannelPeriodicUpdateRequest"
 		private const val CHANNEL_STORE_NAME = "leanback_channels"
+		private const val SERVER_ROW_CHANNEL = "home_row"
+		private val STANDARD_CHANNELS = listOf("latest_media", "my_media", "next_up", "latest_movies", "latest_episodes")
 
 		/**
 		 * Check if the app can use Android TV home screen channels on this device.
@@ -99,6 +105,7 @@ class LeanbackChannelWorker(
 	private val userPreferences by inject<UserPreferences>()
 	private val userViewsRepository by inject<UserViewsRepository>()
 	private val imageHelper by inject<ImageHelper>()
+	private val homeRowsApi by inject<HomeRowsApi>()
 
 	/**
 	 * Update all channels for the currently authenticated user.
@@ -114,6 +121,15 @@ class LeanbackChannelWorker(
 		// Retry later if no authenticated user is found
 		!api.isUsable -> Result.retry()
 		else -> try {
+			// Personal fork: on a server with HomeRows, publish only the first non-library home row
+			if (homeRowsApi.isSupported()) {
+				// A failed layout load is retried rather than falling back to the standard channels.
+				val serverRows = buildServerRows(homeRowsApi) ?: return Result.retry()
+				publishServerRow(launcherRow(serverRows))
+				return Result.success()
+			}
+
+
 			// Get next up episodes
 			val (resumeItems, nextUpItems) = getNextUpItems()
 			// Get latest media
@@ -199,6 +215,43 @@ class LeanbackChannelWorker(
 
 			Result.retry()
 		}
+	}
+
+	/**
+	 * Publishes one launcher row from the server's home rows (personal fork, Custom Home Rows), or none when [row] is
+	 * null. The standard channels and Watch Next are removed, so the app shows exactly one row on the TV home.
+	 */
+	private fun publishServerRow(row: LoadedServerRow?) {
+		context.contentResolver.delete(TvContractCompat.PreviewPrograms.CONTENT_URI, null, null)
+		context.contentResolver.delete(WatchNextPrograms.CONTENT_URI, null, null)
+		STANDARD_CHANNELS.forEach(::deleteChannel)
+
+		if (row == null) {
+			deleteChannel(SERVER_ROW_CHANNEL)
+			return
+		}
+
+		val channel = getChannelUri(
+			SERVER_ROW_CHANNEL, Channel.Builder()
+				.setType(TvContractCompat.Channels.TYPE_PREVIEW)
+				.setDisplayName(row.title)
+				.setAppLinkIntent(Intent(context, StartupActivity::class.java))
+				.build(),
+			default = true
+		) ?: return Timber.e("Skipping the home row channel because it was not available")
+
+		val preferParentThumb = userPreferences[UserPreferences.seriesThumbnailsEnabled]
+		context.contentResolver.bulkInsert(
+			TvContractCompat.PreviewPrograms.CONTENT_URI,
+			row.items.items.map { item -> createPreviewProgram(channel, item, preferParentThumb) }.toTypedArray()
+		)
+	}
+
+	/** Deletes a channel created by [getChannelUri], if it exists. */
+	private fun deleteChannel(name: String) {
+		val store = context.getSharedPreferences(CHANNEL_STORE_NAME, Context.MODE_PRIVATE)
+		store.getString(name, null)?.toUri()?.let { context.contentResolver.delete(it, null, null) }
+		store.edit { remove(name) }
 	}
 
 	/**
