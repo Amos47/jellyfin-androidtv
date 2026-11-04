@@ -1,23 +1,28 @@
 package org.jellyfin.androidtv.data.homerows
 
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
+import okhttp3.Call
+import okhttp3.Callback
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
+import okhttp3.Response
 import org.jellyfin.sdk.api.client.ApiClient
 import org.jellyfin.sdk.api.client.util.ApiSerializer
 import org.jellyfin.sdk.api.client.util.AuthorizationHeaderBuilder
 import org.jellyfin.sdk.api.okhttp.OkHttpFactory
+import java.io.IOException
 import java.util.UUID
+import kotlin.coroutines.resume
+import kotlin.coroutines.resumeWithException
 
 /*
  * Client for the personal fork server's HomeRows API (Custom Home Rows). The SDK has no HomeRows endpoints, can't send
@@ -42,7 +47,7 @@ class OkHttpHomeRowsTransport(
 ) : HomeRowsTransport {
 	private val client by lazy { okHttpFactory.createClient(api.httpClientOptions) }
 
-	override suspend fun send(method: String, path: String, query: Map<String, String>, body: String?) = withContext(Dispatchers.IO) {
+	override suspend fun send(method: String, path: String, query: Map<String, String>, body: String?): HomeRowsHttpResult {
 		val baseUrl = requireNotNull(api.baseUrl) { "No server" }
 		val url = "${baseUrl.trimEnd('/')}/$path".toHttpUrl().newBuilder().apply {
 			for ((key, value) in query) addQueryParameter(key, value)
@@ -61,8 +66,20 @@ class OkHttpHomeRowsTransport(
 			.method(method, body?.toRequestBody("application/json".toMediaType()))
 			.build()
 
-		client.newCall(request).execute().use { response ->
-			HomeRowsHttpResult(response.code, response.body?.string().orEmpty())
+		// Enqueued so that cancelling the coroutine (such as a row timeout) cancels the request.
+		val call = client.newCall(request)
+		return suspendCancellableCoroutine { continuation ->
+			continuation.invokeOnCancellation { call.cancel() }
+			call.enqueue(object : Callback {
+				override fun onFailure(call: Call, e: IOException) {
+					continuation.resumeWithException(e)
+				}
+
+				override fun onResponse(call: Call, response: Response) {
+					val result = runCatching { response.use { HomeRowsHttpResult(it.code, it.body?.string().orEmpty()) } }
+					result.fold(continuation::resume, continuation::resumeWithException)
+				}
+			})
 		}
 	}
 }
@@ -88,7 +105,8 @@ class HomeRowsApi(
 		fun clearSupportCache() = supportCache.clear()
 	}
 
-	private val json: Json = ApiSerializer.json
+	// The SDK's Json skips default values; the server reads a missing Enabled as false.
+	private val json: Json = Json(ApiSerializer.json) { encodeDefaults = true }
 	private val _revision = MutableStateFlow(0)
 
 	/** Incremented after every successful change to the user's layout or the household default. */

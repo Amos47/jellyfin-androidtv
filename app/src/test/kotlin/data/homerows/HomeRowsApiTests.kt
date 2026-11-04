@@ -104,6 +104,17 @@ class HomeRowsApiTests : FunSpec({
 		sent["Provider"] shouldBe JsonPrimitive("genre")
 	}
 
+	test("saveConfiguration sends Enabled and Title even when they are defaults") {
+		val transport = FakeHomeRowsTransport { _, _ -> HomeRowsHttpResult(200, CONFIGURATION_V1) }
+		val row = HomeRowInstance(EMPTY_ROW_ID, "genre", null, emptyConfig(), enabled = true)
+
+		api(transport).saveConfiguration(listOf(row))
+
+		val sent = Json.parseToJsonElement(transport.calls.single().body!!).jsonObject["Rows"]!!.jsonArray.single().jsonObject
+		sent["Enabled"] shouldBe JsonPrimitive(true)
+		sent["Config"] shouldBe emptyConfig()
+	}
+
 	test("saveConfiguration maps 400 errors") {
 		val transport = FakeHomeRowsTransport { _, _ ->
 			HomeRowsHttpResult(400, """{"title":"One or more validation errors occurred.","errors":{"rows[2].limit":["Too big"]}}""")
