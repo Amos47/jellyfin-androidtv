@@ -5,6 +5,7 @@ import androidx.leanback.widget.Presenter
 import androidx.leanback.widget.Row
 import androidx.lifecycle.ProcessLifecycleOwner
 import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -27,15 +28,22 @@ class HomeRowItemAdapter(
 	private val preferSeriesPoster: Boolean,
 	presenter: Presenter,
 	parent: MutableObjectAdapter<Row>,
+	private val scope: CoroutineScope = ProcessLifecycleOwner.get().lifecycleScope,
 ) : ItemRowAdapter(context, QueryType.HomeRow, false, presenter, parent), KoinComponent {
 	private val homeRowsApi by inject<HomeRowsApi>()
 
+	/** Shows the page loaded with the layout, and counts it as a full retrieve for the refresh triggers. */
 	fun setInitialItems(items: List<BaseItemDto>) {
+		// The base Retrieve() stamps lastFullRetrieve and resets itemsLoaded; it does nothing else for QueryType.HomeRow.
+		super.Retrieve()
 		setItems(items = items, transform = ::toRowItem)
+		notifyRetrieveFinished()
 	}
 
 	override fun Retrieve() {
-		ProcessLifecycleOwner.get().lifecycleScope.launch {
+		// Stamp lastFullRetrieve and reset itemsLoaded first, so ReRetrieveIfNeeded works and setItems replaces the row.
+		super.Retrieve()
+		scope.launch {
 			runCatching {
 				val items = withContext(Dispatchers.IO) { homeRowsApi.getItems(rowId) }
 				val shown = if (items.error == null) items.items else emptyList()
