@@ -6,7 +6,7 @@ Statuses: **Planned** → **In progress** → **Implemented** (unit tested, buil
 
 | Feature | Priority | Status |
 |---|---|---|
-| [Server home rows (Custom Home Rows)](#server-home-rows-custom-home-rows) | P0 | Implemented, device check pending |
+| [Server home rows (Custom Home Rows)](#server-home-rows-custom-home-rows) | P0 | Verified (debug build, local server copy) |
 | [Rewatching in Next Up](#rewatching-in-next-up) | P0 | Verified |
 | [Episode artwork fallback](#episode-artwork-fallback) | P0 | Implemented, device check pending |
 | [Custom app identity and signing](#custom-app-identity-and-signing) | P0 | Verified |
