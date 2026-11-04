@@ -37,7 +37,6 @@ fun SettingsHomeRowScreen(key: String) {
 
 	val row = editorRow.row
 	val provider = state.provider(row.provider)
-	val index = state.rows.indexOf(editorRow)
 	val localErrors = state.validation(editorRow)
 	val serverErrors = state.errors[key].orEmpty()
 
@@ -47,24 +46,6 @@ fun SettingsHomeRowScreen(key: String) {
 				overlineContent = { Text(stringResource(R.string.home_rows_heading).uppercase()) },
 				headingContent = { Text(editorRowLabel(row, provider)) },
 				captionContent = provider?.description?.takeIf { it.isNotBlank() }?.let { { Text(it) } },
-			)
-		}
-
-		item {
-			ListButton(
-				headingContent = { Text(stringResource(R.string.home_rows_move_up)) },
-				enabled = index > 0,
-				onClick = { editor.moveUp(key) },
-				modifier = Modifier.focusKey("move_up"),
-			)
-		}
-
-		item {
-			ListButton(
-				headingContent = { Text(stringResource(R.string.home_rows_move_down)) },
-				enabled = index < state.rows.lastIndex,
-				onClick = { editor.moveDown(key) },
-				modifier = Modifier.focusKey("move_down"),
 			)
 		}
 

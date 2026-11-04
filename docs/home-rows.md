@@ -23,7 +23,8 @@ of rows, each from a server **provider** with its own settings. The TV treats ro
 - **Settings → Home** becomes a rows editor (`ui/settings/screen/home/rows/`):
   - the rows list, with Hidden / Unavailable / Needs settings captions, **Add row**, **Save**, **Reset to default**,
     and for admins **Save as default for everyone** and **Remove household default** (each confirmed);
-  - one screen per row: move up/down, show on home screen, title, and one entry per provider setting (checkbox,
+  - **Reorder rows** on the list: select a row to pick it up, move it with up/down, select again (or Back) to drop it;
+  - one screen per row: show on home screen, title, and one entry per provider setting (checkbox,
     pick-one, pick-many, number, text);
   - edits stay pending in `HomeRowsEditorViewModel` until Save. Back from the list, or closing Settings, with
     pending edits asks **Save / Discard / Keep editing**. A failed save keeps the edits and shows the server's

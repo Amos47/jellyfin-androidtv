@@ -2,6 +2,19 @@ package org.jellyfin.androidtv.ui.settings.screen.home.rows
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
+import androidx.compose.ui.res.painterResource
+import kotlinx.coroutines.launch
+import org.jellyfin.androidtv.ui.base.Icon
+import org.jellyfin.androidtv.ui.base.JellyfinTheme
+import org.jellyfin.androidtv.ui.base.list.ListControlDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -45,6 +58,9 @@ fun SettingsHomeRowsScreen() {
 	val isAdmin = userRepository.currentUser.collectAsState().value?.policy?.isAdministrator == true
 
 	var confirm by remember { mutableStateOf<PendingConfirm?>(null) }
+	// Reorder mode: select a row to pick it up, move it with up/down, select again (or Back) to drop it.
+	var reordering by remember { mutableStateOf(false) }
+	var held by remember { mutableStateOf<String?>(null) }
 	var saved by remember { mutableStateOf(false) }
 
 	LaunchedEffect(Unit) { editor.ensureLoaded() }
@@ -52,6 +68,11 @@ fun SettingsHomeRowsScreen() {
 	// Ask before Back drops unsaved edits; row screens above this one keep them pending, so they don't ask.
 	BackHandler(enabled = state.hasPendingEdits && router.backStack.lastOrNull()?.route == Routes.HOME) {
 		editor.requestLeave(LeaveTarget.BACK)
+	}
+
+	// Registered after the handler above, so these win: Back drops a held row, then leaves reorder mode.
+	BackHandler(enabled = reordering) {
+		if (held != null) held = null else reordering = false
 	}
 
 	val messages = listOfNotNull(state.generalError?.let { stringResource(R.string.home_rows_action_failed, it) }) +
@@ -78,6 +99,23 @@ fun SettingsHomeRowsScreen() {
 			return@SettingsColumn
 		}
 
+		item {
+			ListButton(
+				headingContent = {
+					Text(stringResource(if (reordering) R.string.home_rows_reorder_done else R.string.home_rows_reorder))
+				},
+				captionContent = if (reordering) {
+					{ Text(stringResource(R.string.home_rows_reorder_hint)) }
+				} else null,
+				enabled = state.rows.size > 1 || reordering,
+				onClick = {
+					reordering = !reordering
+					held = null
+				},
+				modifier = Modifier.focusKey("home_rows_reorder"),
+			)
+		}
+
 		items(state.rows, key = { it.key }) { editorRow ->
 			val provider = state.provider(editorRow.row.provider)
 			val serverError = state.errors[editorRow.key]?.values?.firstOrNull()
@@ -89,11 +127,45 @@ fun SettingsHomeRowsScreen() {
 				else -> null
 			}
 
+			val isHeld = held == editorRow.key
+			val bringIntoView = remember { BringIntoViewRequester() }
+			val scope = rememberCoroutineScope()
+
 			ListButton(
 				headingContent = { Text(editorRowLabel(editorRow.row, provider)) },
-				captionContent = caption?.let { { Text(it) } },
-				onClick = { router.push(Routes.HOME_ROW, mapOf("key" to editorRow.key)) },
-				modifier = Modifier.focusKey("home_row_${editorRow.key}"),
+				captionContent = when {
+					isHeld -> {
+						{ Text(stringResource(R.string.home_rows_moving)) }
+					}
+
+					reordering -> null
+					else -> caption?.let { { Text(it) } }
+				},
+				leadingContent = if (isHeld) {
+					{ Icon(painterResource(R.drawable.ic_up_down), contentDescription = null) }
+				} else null,
+				colors = if (isHeld) ListControlDefaults.colors(containerColor = JellyfinTheme.colorScheme.listButtonFocused) else ListControlDefaults.colors(),
+				onClick = {
+					when {
+						!reordering -> router.push(Routes.HOME_ROW, mapOf("key" to editorRow.key))
+						isHeld -> held = null
+						else -> held = editorRow.key
+					}
+				},
+				modifier = Modifier
+					.focusKey("home_row_${editorRow.key}")
+					.bringIntoViewRequester(bringIntoView)
+					.onPreviewKeyEvent { event ->
+						if (!isHeld || event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
+						when (event.key) {
+							Key.DirectionUp -> editor.moveUp(editorRow.key)
+							Key.DirectionDown -> editor.moveDown(editorRow.key)
+							else -> return@onPreviewKeyEvent false
+						}
+						// The row keeps focus as it moves (items are keyed); keep it on screen.
+						scope.launch { bringIntoView.bringIntoView() }
+						true
+					},
 			)
 		}
 
