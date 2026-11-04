@@ -16,6 +16,7 @@ class HomeConfigurationTests : FunSpec({
 		rewatching: Boolean = false,
 		newReleasesMaxDays: Int = 30,
 		seriesThumbnails: Boolean = true,
+		homeRowsRevision: Int = 0,
 	): HomeConfiguration {
 		val userSettingPreferences = mockk<UserSettingPreferences> {
 			every { activeHomesections } returns sections
@@ -26,7 +27,7 @@ class HomeConfigurationTests : FunSpec({
 			every { this@mockk[UserPreferences.homeNewReleasesMaxDays] } returns newReleasesMaxDays
 			every { this@mockk[UserPreferences.seriesThumbnailsEnabled] } returns seriesThumbnails
 		}
-		return getHomeConfiguration(userSettingPreferences, userPreferences)
+		return getHomeConfiguration(userSettingPreferences, userPreferences, homeRowsRevision)
 	}
 
 	test("Unchanged settings are equal") {
@@ -46,5 +47,9 @@ class HomeConfigurationTests : FunSpec({
 		configuration() shouldNotBe configuration(rewatching = true)
 		configuration() shouldNotBe configuration(newReleasesMaxDays = 7)
 		configuration() shouldNotBe configuration(seriesThumbnails = false)
+	}
+
+	test("differs when the home rows revision changes") {
+		configuration() shouldNotBe configuration(homeRowsRevision = 1)
 	}
 })

@@ -33,6 +33,7 @@ import org.jellyfin.androidtv.data.model.DataRefreshService
 import org.jellyfin.androidtv.data.repository.CustomMessageRepository
 import org.jellyfin.androidtv.data.repository.NotificationsRepository
 import org.jellyfin.androidtv.data.repository.UserViewsRepository
+import org.jellyfin.androidtv.data.homerows.HomeRowsApi
 import org.jellyfin.androidtv.data.service.BackgroundService
 import org.jellyfin.androidtv.preference.UserPreferences
 import org.jellyfin.androidtv.preference.UserSettingPreferences
@@ -44,6 +45,8 @@ import org.jellyfin.androidtv.ui.itemhandling.ItemLauncher
 import org.jellyfin.androidtv.ui.itemhandling.ItemRowAdapter
 import org.jellyfin.androidtv.ui.itemhandling.refreshItem
 import org.jellyfin.androidtv.ui.navigation.Destinations
+import org.jellyfin.androidtv.ui.home.serverrows.HomeFragmentServerRow
+import org.jellyfin.androidtv.ui.home.serverrows.buildServerRows
 import org.jellyfin.androidtv.ui.navigation.NavigationRepository
 import org.jellyfin.androidtv.ui.playback.AudioEventListener
 import org.jellyfin.androidtv.ui.playback.MediaManager
@@ -75,6 +78,7 @@ class HomeRowsFragment : RowsSupportFragment(), AudioEventListener, View.OnKeyLi
 	private val navigationRepository by inject<NavigationRepository>()
 	private val itemLauncher by inject<ItemLauncher>()
 	private val keyProcessor by inject<KeyProcessor>()
+	private val homeRowsApi by inject<HomeRowsApi>()
 
 	private val helper by lazy { HomeFragmentHelper(requireContext(), userRepository, userPreferences) }
 
@@ -106,8 +110,11 @@ class HomeRowsFragment : RowsSupportFragment(), AudioEventListener, View.OnKeyLi
 			// Check for coroutine cancellation
 			if (!isActive) return@launch
 
+			// Personal fork: rows from the server's HomeRows API when it has one, see ui/home/serverrows
+			val serverRows = buildServerRows(homeRowsApi)
+
 			// Actually add the sections
-			for (section in homesections) when (section) {
+			if (serverRows != null) serverRows.mapTo(rows) { HomeFragmentServerRow(it) } else for (section in homesections) when (section) {
 				HomeSectionType.LATEST_MEDIA -> rows.add(helper.loadRecentlyAdded(userViewsRepository.views.first()))
 				HomeSectionType.LIBRARY_TILES_SMALL -> rows.add(HomeFragmentViewsRow(small = false))
 				HomeSectionType.LIBRARY_BUTTONS -> rows.add(HomeFragmentViewsRow(small = true))

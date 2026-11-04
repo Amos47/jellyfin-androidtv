@@ -3,7 +3,7 @@
 This branch (`custom`) is a long-lived personal fork of
 [jellyfin-androidtv](https://github.com/jellyfin/jellyfin-androidtv), built for an Amazon Fire TV Stick. It installs
 as **Jellyfin Custom** (`org.jellyfin.androidtv.custom`), next to the official app. It works with unmodified
-Jellyfin servers.
+Jellyfin servers, and uses the owner's server fork for Custom Home Rows when it's there.
 
 The aim is a home media experience the whole household can use: open the app, find the show you're watching, press
 play, and continue from the right episode, including when rewatching a series.
@@ -15,14 +15,15 @@ play, and continue from the right episode, including when rewatching a series.
 | [architecture.md](architecture.md) | Where things live in the code, and where the fork hooks in |
 | [rewatching.md](rewatching.md) | How Next Up and rewatching work (client and server) |
 | [artwork-fallbacks.md](artwork-fallbacks.md) | Episode card image selection and load-failure fallback |
-| [home-rows.md](home-rows.md) | Combined Continue Watching, New Releases, and settings refresh |
+| [home-rows.md](home-rows.md) | Server home rows (Custom Home Rows), combined Continue Watching, New Releases, and settings refresh |
 | [upstream-sync.md](upstream-sync.md) | Merging new upstream releases into `custom` |
 | [release-process.md](release-process.md) | Building, versioning and installing releases |
 
 ## Principles
 
 - Keep changes small and isolated. Put new code in new files where practical, so upstream merges rarely conflict.
-- Use existing Jellyfin server APIs. No server fork and no custom server state.
+- Use existing Jellyfin server APIs, except Custom Home Rows, which uses the owner's server fork when present and falls
+  back to stock behaviour otherwise.
 - Behave consistently across screens, and keep existing settings compatible.
 - Only ever **merge** upstream into `custom`. Never rebase or force-push it: version codes come from the commit count
   (see [development.md](development.md#versioning)).

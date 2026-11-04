@@ -1,5 +1,41 @@
 # Home rows
 
+## Server home rows
+
+On the owner's server fork (`~/Code/jellyfin`, Custom Home Rows), the server decides the home screen: an ordered list
+of rows, each from a server **provider** with its own settings. The TV treats rows generically, as jellyfin-web does.
+
+- **Detection:** `GET HomeRows/Configuration` with `ApiVersion` 1. A 404 is remembered per server for the process;
+  other failures are asked again next time. Stock servers get everything below this section unchanged.
+- **Calls:** `data/homerows/HomeRowsApi.kt`. The SDK has no HomeRows endpoints and can't send PUT, so requests go
+  through OkHttp with the SDK's authorization header.
+- **Home screen:** `buildServerRows` loads the layout, then every enabled row's first 20 items in parallel (10 second
+  limit each). Rows that are disabled, unavailable, need configuration, are empty or fail are left out. Cards follow
+  the row's `Presentation.CardShape`:
+
+  | CardShape | Cards |
+  |---|---|
+  | Thumb | wide; episodes use their own image |
+  | Poster | posters; episodes show the series poster |
+  | Square | square |
+  | Button, or all items are libraries | the My media rows (small or large) |
+
+- **Settings → Home** becomes a rows editor (`ui/settings/screen/home/rows/`):
+  - the rows list, with Hidden / Unavailable / Needs settings captions, **Add row**, **Save**, **Reset to default**,
+    and for admins **Save as default for everyone** and **Remove household default** (each confirmed);
+  - **Reorder rows** on the list: select a row to pick it up, move it with up/down, select again (or Back) to drop it;
+  - one screen per row: show on home screen, title, and one entry per provider setting (checkbox,
+    pick-one, pick-many, number, text);
+  - edits stay pending in `HomeRowsEditorViewModel` until Save. Back from the list, or closing Settings, with
+    pending edits asks **Save / Discard / Keep editing**. A failed save keeps the edits and shows the server's
+    messages on the rows.
+- **Moved settings:** the Next Up cutoff and New releases period are row settings on the server, so the TV hides its
+  local versions. "Enable rewatching in Next Up" stays: series Resume, library Next Up and the launcher still use it.
+- **Refresh:** every successful save, reset or default change bumps `HomeRowsApi.revision`, which is part of the
+  `HomeConfiguration` snapshot, so the home screen is rebuilt when Settings closes.
+
+## Stock server sections
+
 The fork adds two home section types. They're used as **per-user overrides on this TV** (see below), picked in
 Settings → Home → Home section N → This TV only:
 

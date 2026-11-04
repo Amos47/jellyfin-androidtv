@@ -6,6 +6,7 @@ Statuses: **Planned** → **In progress** → **Implemented** (unit tested, buil
 
 | Feature | Priority | Status |
 |---|---|---|
+| [Server home rows (Custom Home Rows)](#server-home-rows-custom-home-rows) | P0 | Verified (debug build, local server copy) |
 | [Rewatching in Next Up](#rewatching-in-next-up) | P0 | Verified |
 | [Episode artwork fallback](#episode-artwork-fallback) | P0 | Implemented, device check pending |
 | [Custom app identity and signing](#custom-app-identity-and-signing) | P0 | Verified |
@@ -25,6 +26,23 @@ Statuses: **Planned** → **In progress** → **Implemented** (unit tested, buil
 | [Upstream sync automation](#upstream-sync-automation) | P2 | Planned |
 
 ---
+
+## Server home rows (Custom Home Rows)
+
+- **Problem:** the home screen should match the web: the same rows, in the same order, built by the owner's server
+  fork (`~/Code/jellyfin`, HomeRows API). The layout should also be editable from the TV.
+- **Behavior:**
+  - On a server with the HomeRows API, the home screen is built from the server layout. Hidden, unavailable, empty
+    and failing rows don't show. Rows load in parallel; one slower than 10 seconds is left out until the next reload.
+  - Settings → Home becomes a rows editor: add, remove, reorder, show/hide, retitle and configure rows. Edits stay
+    pending until **Save**; Back or closing Settings with pending edits asks Save / Discard / Keep editing.
+  - Admins get "Save as default for everyone" and "Remove household default", with a confirmation.
+  - On a stock server, nothing changes, including the This TV only overrides.
+- **Location:** `data/homerows/`, `ui/home/serverrows/`, `ui/itemhandling/HomeRowItemAdapter.kt`,
+  `ui/settings/screen/home/rows/`.
+- **Tests:** `HomeRowsApiTests`, `HomeRowsSchemaTests`, `HomeRowsEditorTests`, `ServerHomeRowsTests`,
+  `HomeRowRoutesTests`, `HomeConfigurationTests`.
+- **Details:** [home-rows.md](home-rows.md#server-home-rows).
 
 ## Rewatching in Next Up
 

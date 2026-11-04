@@ -29,4 +29,7 @@ enum class QueryType {
 	// Personal fork home rows, see ui/home/CustomHomeRows.kt
 	ContinueWatching,
 	NewReleases,
+
+	// Personal fork server home rows, see ui/home/serverrows/ServerHomeRows.kt
+	HomeRow,
 }

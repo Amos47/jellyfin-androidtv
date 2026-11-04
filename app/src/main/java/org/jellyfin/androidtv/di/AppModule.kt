@@ -16,6 +16,10 @@ import org.jellyfin.androidtv.auth.repository.ServerRepository
 import org.jellyfin.androidtv.auth.repository.UserRepository
 import org.jellyfin.androidtv.auth.repository.UserRepositoryImpl
 import org.jellyfin.androidtv.data.eventhandling.SocketHandler
+import org.jellyfin.androidtv.data.homerows.HomeRowsApi
+import org.jellyfin.androidtv.data.homerows.OkHttpHomeRowsTransport
+import org.jellyfin.androidtv.ui.settings.screen.home.rows.HomeRowsEditorViewModel
+import org.jellyfin.sdk.api.client.ApiClient
 import org.jellyfin.androidtv.data.model.DataRefreshService
 import org.jellyfin.androidtv.data.repository.CustomMessageRepository
 import org.jellyfin.androidtv.data.repository.CustomMessageRepositoryImpl
@@ -107,6 +111,9 @@ val appModule = module {
 		get<JellyfinSdk>().createApi(httpClientOptions = get<HttpClientOptions>())
 	}
 
+	// Personal fork: Custom Home Rows, see docs/home-rows.md
+	single { HomeRowsApi(OkHttpHomeRowsTransport(get(), get())) { get<ApiClient>().baseUrl.orEmpty() } }
+
 	single { SocketHandler(get(), get(), get(), get(), get(), get(), get(), get(), get(), ProcessLifecycleOwner.get().lifecycle) }
 
 	// Coil (images)
@@ -162,6 +169,7 @@ val appModule = module {
 	viewModel { UserLoginViewModel(get(), get(), get(), get(defaultDeviceInfo)) }
 	viewModel { ServerAddViewModel(get()) }
 	viewModel { NextUpViewModel(get(), get(), get()) }
+	viewModel { HomeRowsEditorViewModel(get()) }
 	viewModel { StillWatchingViewModel(get(), get(), get(), get()) }
 	viewModel { PhotoPlayerViewModel(get(), get()) }
 	viewModel { SearchViewModel(get()) }

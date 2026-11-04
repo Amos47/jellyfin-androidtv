@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Personal fork: Custom Home Rows (server home rows), see docs/home-rows.md -->
+<resources>
+	<string name="home_rows_heading">Home screen rows</string>
+	<string name="home_rows_loading">Loading…</string>
+	<string name="home_rows_load_failed">Couldn\'t load the home screen rows. Select to try again.</string>
+	<string name="home_rows_unsaved">Unsaved changes</string>
+	<string name="home_rows_status_hidden">Hidden</string>
+	<string name="home_rows_status_unavailable">Unavailable</string>
+	<string name="home_rows_status_needs_settings">Needs settings</string>
+	<string name="home_rows_add">Add row</string>
+	<string name="home_rows_add_full">Up to 20 rows</string>
+	<string name="home_rows_save">Save</string>
+	<string name="home_rows_saved">Saved</string>
+	<string name="home_rows_save_failed">Couldn\'t save. Check the rows marked below.</string>
+	<string name="home_rows_action_failed">Something went wrong: %1$s</string>
+	<string name="home_rows_reset">Reset to default</string>
+	<string name="home_rows_reset_confirm">Reset your home screen to the default layout? Unsaved changes are lost.</string>
+	<string name="home_rows_save_default">Save as default for everyone</string>
+	<string name="home_rows_save_default_confirm">Make these rows the default home screen for everyone who hasn\'t customized theirs?</string>
+	<string name="home_rows_remove_default">Remove household default</string>
+	<string name="home_rows_remove_default_confirm">Remove the household default home screen?</string>
+	<string name="home_rows_confirm">Confirm</string>
+	<string name="home_rows_cancel">Cancel</string>
+	<string name="home_rows_done">Done</string>
+
+	<string name="home_rows_reorder">Reorder rows</string>
+	<string name="home_rows_reorder_done">Done reordering</string>
+	<string name="home_rows_reorder_hint">Select a row to pick it up, move it with up and down, then select it again to drop it.</string>
+	<string name="home_rows_moving">Moving: up and down to move, select to drop</string>
+	<string name="home_rows_show">Show on home screen</string>
+	<string name="home_rows_title">Title</string>
+	<string name="home_rows_title_default">Default</string>
+	<string name="home_rows_remove">Remove row</string>
+	<string name="home_rows_value_on">On</string>
+	<string name="home_rows_value_off">Off</string>
+	<string name="home_rows_value_none">None</string>
+	<string name="home_rows_increase">Increase</string>
+	<string name="home_rows_decrease">Decrease</string>
+	<string name="home_rows_range">From %1$d to %2$d</string>
+
+	<string name="home_rows_error_required">Required</string>
+	<string name="home_rows_error_out_of_range">Out of range</string>
+	<string name="home_rows_error_too_long">Too long</string>
+	<string name="home_rows_error_unknown_option">No longer available, pick another</string>
+	<string name="home_rows_error_pick_at_least_one">Pick at least one</string>
+
+	<string name="home_rows_unsaved_title">Unsaved changes</string>
+	<string name="home_rows_unsaved_message">Save your home screen changes before leaving?</string>
+	<string name="home_rows_discard">Discard</string>
+	<string name="home_rows_keep_editing">Keep editing</string>
+
+	<string name="home_rows_rewatching_caption">Used by series Resume, library Next Up and the launcher. Home rows use each row\'s own Rewatching setting.</string>
+</resources>
