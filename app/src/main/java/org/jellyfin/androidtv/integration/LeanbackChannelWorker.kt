@@ -28,6 +28,10 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.withContext
 import org.jellyfin.androidtv.R
+import org.jellyfin.androidtv.data.homerows.HomeRowsApi
+import org.jellyfin.androidtv.ui.home.serverrows.LoadedServerRow
+import org.jellyfin.androidtv.ui.home.serverrows.buildServerRows
+import org.jellyfin.androidtv.ui.home.serverrows.launcherRow
 import org.jellyfin.androidtv.data.querying.withUserPreferences
 import org.jellyfin.androidtv.data.repository.ItemRepository
 import org.jellyfin.androidtv.data.repository.UserViewsRepository
@@ -76,6 +80,9 @@ class LeanbackChannelWorker(
 	companion object {
 		private const val PERIODIC_UPDATE_REQUEST_NAME = "LeanbackChannelPeriodicUpdateRequest"
 		private const val CHANNEL_STORE_NAME = "leanback_channels"
+		private const val SERVER_ROW_CHANNEL = "home_row"
+		private const val WATCH_NEXT_ORDER_STEP_MS = 60_000L
+		private val STANDARD_CHANNELS = listOf("latest_media", "my_media", "next_up", "latest_movies", "latest_episodes")
 
 		/**
 		 * Check if the app can use Android TV home screen channels on this device.
@@ -99,6 +106,7 @@ class LeanbackChannelWorker(
 	private val userPreferences by inject<UserPreferences>()
 	private val userViewsRepository by inject<UserViewsRepository>()
 	private val imageHelper by inject<ImageHelper>()
+	private val homeRowsApi by inject<HomeRowsApi>()
 
 	/**
 	 * Update all channels for the currently authenticated user.
@@ -114,6 +122,15 @@ class LeanbackChannelWorker(
 		// Retry later if no authenticated user is found
 		!api.isUsable -> Result.retry()
 		else -> try {
+			// Personal fork: on a server with HomeRows, publish only the first non-library home row
+			if (homeRowsApi.isSupported()) {
+				// A failed layout load is retried rather than falling back to the standard channels.
+				val serverRows = buildServerRows(homeRowsApi) ?: return Result.retry()
+				publishServerRow(launcherRow(serverRows))
+				return Result.success()
+			}
+
+
 			// Get next up episodes
 			val (resumeItems, nextUpItems) = getNextUpItems()
 			// Get latest media
@@ -199,6 +216,41 @@ class LeanbackChannelWorker(
 
 			Result.retry()
 		}
+	}
+
+	/**
+	 * Publishes one launcher row from the server's home rows (personal fork, Custom Home Rows): the items of [row] go to
+	 * Watch Next, which is the row the Fire TV home shows for apps. Preview channels, including the standard ones, are
+	 * removed, so the app shows exactly one row. A null [row] clears Watch Next.
+	 */
+	private fun publishServerRow(row: LoadedServerRow?) {
+		context.contentResolver.delete(TvContractCompat.PreviewPrograms.CONTENT_URI, null, null)
+		(STANDARD_CHANNELS + SERVER_ROW_CHANNEL).forEach(::deleteChannel)
+
+		// Replace the whole list, so programs keep the row's order: the launcher sorts Watch Next by engagement time, so
+		// the first item gets the latest time. Items the user removed from the launcher stay removed.
+		val current = getCurrentWatchNext()
+		val removedByUser = current.filterNot { it.isBrowsable }.mapNotNull { it.internalProviderId }.toSet()
+		current.filter { it.isBrowsable }
+			.forEach { context.contentResolver.delete(TvContractCompat.buildWatchNextProgramUri(it.id), null, null) }
+
+		val now = Instant.now().toEpochMilli()
+		val programs = row?.items?.items.orEmpty()
+			.filterNot { it.id.toString() in removedByUser }
+			.mapIndexed { index, item ->
+				WatchNextProgram.Builder(getBaseItemAsWatchNextProgram(item))
+					.setLastEngagementTimeUtcMillis(now - index * WATCH_NEXT_ORDER_STEP_MS)
+					.build()
+					.toContentValues()
+			}
+		context.contentResolver.bulkInsert(WatchNextPrograms.CONTENT_URI, programs.toTypedArray())
+	}
+
+	/** Deletes a channel created by [getChannelUri], if it exists. */
+	private fun deleteChannel(name: String) {
+		val store = context.getSharedPreferences(CHANNEL_STORE_NAME, Context.MODE_PRIVATE)
+		store.getString(name, null)?.toUri()?.let { context.contentResolver.delete(it, null, null) }
+		store.edit { remove(name) }
 	}
 
 	/**

@@ -129,4 +129,25 @@ class ServerHomeRowsTests : FunSpec({
 		rows.map { it.row.id } shouldBe listOf(enabled)
 		transport.calls.none { it.path == "HomeRows/$disabled/Items" } shouldBe true
 	}
+
+	context("launcherRow") {
+		fun loaded(style: ServerRowStyle, title: String) =
+			LoadedServerRow(row(), items(title = title), title, style)
+
+		test("is the first row that isn't a library row") {
+			val rows = listOf(
+				loaded(ServerRowStyle.LIBRARY_BUTTONS, "My Media"),
+				loaded(ServerRowStyle.LIBRARY_TILES, "Libraries"),
+				loaded(ServerRowStyle.THUMB, "Continue Watching"),
+				loaded(ServerRowStyle.POSTER, "Comedy"),
+			)
+
+			launcherRow(rows)?.title shouldBe "Continue Watching"
+		}
+
+		test("is null when there are only library rows") {
+			launcherRow(listOf(loaded(ServerRowStyle.LIBRARY_BUTTONS, "My Media"))) shouldBe null
+			launcherRow(emptyList()) shouldBe null
+		}
+	}
 })

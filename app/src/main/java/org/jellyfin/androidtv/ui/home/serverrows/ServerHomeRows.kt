@@ -76,3 +76,8 @@ suspend fun buildServerRows(api: HomeRowsApi, timeout: Duration = 10.seconds): L
 			.filterNotNull()
 	}
 }
+
+/** The row published to the TV launcher: the first shown row that isn't a library row (personal fork). */
+fun launcherRow(rows: List<LoadedServerRow>): LoadedServerRow? = rows.firstOrNull {
+	it.style != ServerRowStyle.LIBRARY_BUTTONS && it.style != ServerRowStyle.LIBRARY_TILES
+}
