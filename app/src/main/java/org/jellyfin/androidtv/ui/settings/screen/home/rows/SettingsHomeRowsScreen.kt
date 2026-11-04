@@ -1,5 +1,6 @@
 package org.jellyfin.androidtv.ui.settings.screen.home.rows
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.lazy.items
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -47,6 +48,11 @@ fun SettingsHomeRowsScreen() {
 	var saved by remember { mutableStateOf(false) }
 
 	LaunchedEffect(Unit) { editor.ensureLoaded() }
+
+	// Ask before Back drops unsaved edits; row screens above this one keep them pending, so they don't ask.
+	BackHandler(enabled = state.hasPendingEdits && router.backStack.lastOrNull()?.route == Routes.HOME) {
+		editor.requestLeave(LeaveTarget.BACK)
+	}
 
 	val messages = listOfNotNull(state.generalError?.let { stringResource(R.string.home_rows_action_failed, it) }) +
 		state.errors[GENERAL_ERRORS_KEY]?.values.orEmpty()

@@ -31,6 +31,7 @@ import kotlinx.coroutines.flow.onEach
 import org.jellyfin.androidtv.auth.repository.ServerRepository
 import org.jellyfin.androidtv.auth.repository.SessionRepository
 import org.jellyfin.androidtv.data.repository.NotificationsRepository
+import org.jellyfin.androidtv.data.homerows.HomeRowsApi
 import org.jellyfin.androidtv.preference.UserPreferences
 import org.jellyfin.androidtv.preference.UserSettingPreferences
 import org.jellyfin.androidtv.ui.settings.compat.SettingsViewModel
@@ -44,6 +45,7 @@ class HomeFragment : Fragment() {
 	private val serverRepository by inject<ServerRepository>()
 	private val notificationRepository by inject<NotificationsRepository>()
 	private val userPreferences by inject<UserPreferences>()
+	private val homeRowsApi by inject<HomeRowsApi>()
 	private val userSettingPreferences by inject<UserSettingPreferences>()
 	private val settingsViewModel by activityViewModel<SettingsViewModel>()
 
@@ -61,7 +63,7 @@ class HomeFragment : Fragment() {
 		LaunchedEffect(settingsViewModel) {
 			var configurationOnOpen: HomeConfiguration? = null
 			settingsViewModel.visible.collect { visible ->
-				val configuration = getHomeConfiguration(userSettingPreferences, userPreferences)
+				val configuration = getHomeConfiguration(userSettingPreferences, userPreferences, homeRowsApi.revision.value)
 				if (visible) {
 					configurationOnOpen = configuration
 				} else if (configurationOnOpen != null && configurationOnOpen != configuration) {

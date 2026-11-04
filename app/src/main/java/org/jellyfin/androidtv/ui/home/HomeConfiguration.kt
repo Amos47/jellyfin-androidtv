@@ -11,11 +11,14 @@ import org.jellyfin.androidtv.preference.UserSettingPreferences
 data class HomeConfiguration(
 	val sections: List<HomeSectionType>,
 	val preferences: List<Any>,
+	// Personal fork: bumped by every server home rows change, see data/homerows/HomeRowsApi.kt
+	val homeRowsRevision: Int = 0,
 )
 
 fun getHomeConfiguration(
 	userSettingPreferences: UserSettingPreferences,
 	userPreferences: UserPreferences,
+	homeRowsRevision: Int = 0,
 ) = HomeConfiguration(
 	sections = userSettingPreferences.activeHomesections,
 	preferences = listOf(
@@ -24,4 +27,5 @@ fun getHomeConfiguration(
 		userPreferences[UserPreferences.homeNewReleasesMaxDays],
 		userPreferences[UserPreferences.seriesThumbnailsEnabled],
 	),
+	homeRowsRevision = homeRowsRevision,
 )
