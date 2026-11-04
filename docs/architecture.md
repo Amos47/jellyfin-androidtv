@@ -43,6 +43,14 @@ HomeFragment (Compose host; recreates rows when home settings change)
   - `Retrieve()` dispatches on `QueryType` to `retrieve*` functions in `ItemRowAdapterHelper.kt` and
     `CustomHomeRowsAdapterHelper.kt`.
   - Rows refresh after playback through `ChangeTriggerType` (`ReRetrieveIfNeeded`).
+- Server home rows (Custom Home Rows, only on the owner's server fork):
+  - `HomeRowsFragment.onCreate` calls `buildServerRows`; when it returns rows, they replace the section loop.
+  - `A/data/homerows/`: HomeRows API client over OkHttp (`HomeRowsApi`), DTOs, schema → fields, editor state.
+  - `A/ui/home/serverrows/`: pure row logic (`ServerHomeRows.kt`) and `HomeFragmentServerRow`.
+  - `A/ui/itemhandling/HomeRowItemAdapter.kt` overrides `Retrieve()` for `QueryType.HomeRow`.
+  - Settings: `SettingsHomeScreen` hands over to `screen/home/rows/` when supported; `MainActivitySettings` asks
+    before closing with unsaved edits; `HomeConfiguration` includes `HomeRowsApi.revision`.
+  - Koin: `HomeRowsApi` and `HomeRowsEditorViewModel` in `AppModule`.
 - Fork rows:
   - `A/ui/home/CustomHomeRows.kt` holds pure logic and request builders.
   - `A/ui/itemhandling/CustomHomeRowsAdapterHelper.kt` holds the loading. It lives in this package to reach
@@ -109,3 +117,4 @@ HomeFragment (Compose host; recreates rows when home settings change)
   - `AsyncImageViewTests`
   - `CustomHomeRowsTests`
   - `HomeConfigurationTests`
+  - `HomeRowsApiTests`, `HomeRowsSchemaTests`, `HomeRowsEditorTests`, `ServerHomeRowsTests`, `HomeRowRoutesTests`
