@@ -17,7 +17,7 @@ class FakeHomeRowsTransport(
 ) : HomeRowsTransport {
 	data class Call(val method: String, val path: String, val query: Map<String, String>, val body: String?)
 
-	val calls = mutableListOf<Call>()
+	val calls: MutableList<Call> = java.util.Collections.synchronizedList(mutableListOf())
 
 	override suspend fun send(method: String, path: String, query: Map<String, String>, body: String?): HomeRowsHttpResult {
 		calls += Call(method, path, query, body)

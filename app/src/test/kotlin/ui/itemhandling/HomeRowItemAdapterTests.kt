@@ -1,5 +1,6 @@
 package org.jellyfin.androidtv.ui.itemhandling
 
+import io.kotest.assertions.nondeterministic.eventually
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import io.mockk.mockk
@@ -15,6 +16,7 @@ import org.koin.core.context.stopKoin
 import org.koin.dsl.module
 import java.time.Instant
 import java.util.UUID
+import kotlin.time.Duration.Companion.seconds
 
 class HomeRowItemAdapterTests : FunSpec({
 	val rowId = UUID.randomUUID()
@@ -53,7 +55,8 @@ class HomeRowItemAdapterTests : FunSpec({
 		dataRefreshService.lastTvPlayback = Instant.now().plusSeconds(60)
 
 		adapter.ReRetrieveIfNeeded() shouldBe true
-		transport.calls.size shouldBe 1
+		// The fetch runs on the IO dispatcher.
+		eventually(5.seconds) { transport.calls.size shouldBe 1 }
 	}
 
 	test("a refresh resets the loaded item count") {
