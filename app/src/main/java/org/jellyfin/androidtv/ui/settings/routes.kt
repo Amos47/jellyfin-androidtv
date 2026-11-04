@@ -25,6 +25,11 @@ import org.jellyfin.androidtv.ui.settings.screen.home.SettingsHomeNewReleasesPer
 import org.jellyfin.androidtv.ui.settings.screen.home.SettingsHomeNextUpCutoffScreen
 import org.jellyfin.androidtv.ui.settings.screen.home.SettingsHomeScreen
 import org.jellyfin.androidtv.ui.settings.screen.home.SettingsHomeSectionScreen
+import org.jellyfin.androidtv.ui.settings.screen.home.rows.SettingsHomeRowAddScreen
+import org.jellyfin.androidtv.ui.settings.screen.home.rows.SettingsHomeRowNumberScreen
+import org.jellyfin.androidtv.ui.settings.screen.home.rows.SettingsHomeRowOptionScreen
+import org.jellyfin.androidtv.ui.settings.screen.home.rows.SettingsHomeRowScreen
+import org.jellyfin.androidtv.ui.settings.screen.home.rows.SettingsHomeRowTextScreen
 import org.jellyfin.androidtv.ui.settings.screen.library.SettingsLibrariesDisplayGridScreen
 import org.jellyfin.androidtv.ui.settings.screen.library.SettingsLibrariesDisplayImageSizeScreen
 import org.jellyfin.androidtv.ui.settings.screen.library.SettingsLibrariesDisplayImageTypeScreen
@@ -92,6 +97,13 @@ object Routes {
 	const val HOME_SECTION = "/home/section/{index}"
 	const val HOME_NEXT_UP_CUTOFF = "/home/next-up-cutoff"
 	const val HOME_NEW_RELEASES_PERIOD = "/home/new-releases-period"
+
+	// Personal fork: the rows editor on servers with HomeRows, see screen/home/rows
+	const val HOME_ROW = "/home/row/{key}"
+	const val HOME_ROW_ADD = "/home/row-add"
+	const val HOME_ROW_OPTION = "/home/row/{key}/option/{setting}"
+	const val HOME_ROW_TEXT = "/home/row/{key}/text/{setting}"
+	const val HOME_ROW_NUMBER = "/home/row/{key}/number/{setting}"
 	const val LIVETV_GUIDE_FILTERS = "/livetv/guide/filters"
 	const val LIVETV_GUIDE_OPTIONS = "/livetv/guide/options"
 	const val LIVETV_GUIDE_CHANNEL_ORDER = "/livetv/guide/channel-order"
@@ -219,6 +231,21 @@ val routes = mapOf<String, RouteComposable>(
 	},
 	Routes.HOME_NEW_RELEASES_PERIOD to {
 		SettingsHomeNewReleasesPeriodScreen()
+	},
+	Routes.HOME_ROW to { context ->
+		SettingsHomeRowScreen(context.parameters["key"]!!)
+	},
+	Routes.HOME_ROW_ADD to {
+		SettingsHomeRowAddScreen()
+	},
+	Routes.HOME_ROW_OPTION to { context ->
+		SettingsHomeRowOptionScreen(context.parameters["key"]!!, context.parameters["setting"]!!)
+	},
+	Routes.HOME_ROW_TEXT to { context ->
+		SettingsHomeRowTextScreen(context.parameters["key"]!!, context.parameters["setting"]!!)
+	},
+	Routes.HOME_ROW_NUMBER to { context ->
+		SettingsHomeRowNumberScreen(context.parameters["key"]!!, context.parameters["setting"]!!)
 	},
 	Routes.LIVETV_GUIDE_FILTERS to {
 		SettingsLiveTvGuideFiltersScreen()

@@ -13,12 +13,15 @@ import org.jellyfin.androidtv.preference.UserSettingPreferences
 import org.jellyfin.androidtv.ui.base.Text
 import org.jellyfin.androidtv.ui.base.form.Checkbox
 import org.jellyfin.androidtv.ui.base.list.ListButton
+import org.jellyfin.androidtv.ui.base.list.ListMessage
 import org.jellyfin.androidtv.ui.base.list.ListSection
 import org.jellyfin.androidtv.ui.navigation.LocalRouter
 import org.jellyfin.androidtv.ui.navigation.focus.focusKey
 import org.jellyfin.androidtv.ui.settings.Routes
 import org.jellyfin.androidtv.ui.settings.compat.rememberPreference
 import org.jellyfin.androidtv.ui.settings.composable.SettingsColumn
+import org.jellyfin.androidtv.ui.settings.screen.home.rows.SettingsHomeRowsScreen
+import org.jellyfin.androidtv.ui.settings.screen.home.rows.rememberHomeRowsSupported
 import org.koin.compose.koinInject
 
 @Composable
@@ -26,6 +29,13 @@ fun SettingsHomeScreen() {
 	val router = LocalRouter.current
 	val userPreferences = koinInject<UserPreferences>()
 	val userSettingPreferences = koinInject<UserSettingPreferences>()
+
+	// Personal fork: the rows editor on servers with HomeRows, see screen/home/rows
+	when (rememberHomeRowsSupported()) {
+		true -> return SettingsHomeRowsScreen()
+		null -> return SettingsColumn { item { ListMessage { Text(stringResource(R.string.home_rows_loading)) } } }
+		false -> Unit
+	}
 
 	SettingsColumn {
 		item {
