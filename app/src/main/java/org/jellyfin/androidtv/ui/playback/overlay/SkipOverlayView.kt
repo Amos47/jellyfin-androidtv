@@ -31,6 +31,8 @@ import org.jellyfin.androidtv.R
 import org.jellyfin.androidtv.ui.base.Icon
 import org.jellyfin.androidtv.ui.base.Text
 import org.jellyfin.androidtv.ui.playback.segment.MediaSegmentRepository
+import org.jellyfin.androidtv.ui.playback.segment.SkipSegment
+import org.jellyfin.androidtv.ui.playback.segment.skipPrompt
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
 
@@ -79,17 +81,45 @@ class SkipOverlayView @JvmOverloads constructor(
 	private val _skipUiEnabled = MutableStateFlow(true)
 	private val _nextEpisode = MutableStateFlow(false)
 
+	// Personal fork: the button follows the playback position, see skipPrompt
+	private var segments: List<SkipSegment> = emptyList()
+	private var hasNextItem = false
+	private var dismissedStart: Duration? = null
+	private var promptStart: Duration? = null
+
 	var currentPosition: Duration
 		get() = _currentPosition.value
 		set(value) {
 			_currentPosition.value = value
+			updatePrompt()
 		}
 
 	var currentPositionMs: Long
 		get() = _currentPosition.value.inWholeMilliseconds
 		set(value) {
-			_currentPosition.value = value.milliseconds
+			currentPosition = value.milliseconds
 		}
+
+	/** Personal fork: sets the segments to offer skipping for the current item, replacing the previous item's. */
+	fun setSegments(segments: List<SkipSegment>, hasNextItem: Boolean) {
+		this.segments = segments
+		this.hasNextItem = hasNextItem
+		dismissedStart = null
+		updatePrompt()
+	}
+
+	/** Personal fork: hides the button until playback reaches another segment. */
+	fun dismiss() {
+		dismissedStart = promptStart
+		updatePrompt()
+	}
+
+	private fun updatePrompt() {
+		val prompt = skipPrompt(_currentPosition.value, segments, hasNextItem, dismissedStart)
+		promptStart = prompt?.segmentStart
+		_nextEpisode.value = prompt?.nextEpisode == true
+		_targetPosition.value = prompt?.target
+	}
 
 	var targetPosition: Duration?
 		get() = _targetPosition.value

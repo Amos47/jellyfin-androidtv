@@ -10,8 +10,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.jellyfin.androidtv.ui.playback.segment.MediaSegmentAction
 import org.jellyfin.androidtv.ui.playback.segment.MediaSegmentRepository
-import org.jellyfin.androidtv.ui.playback.segment.SkipPress
-import org.jellyfin.androidtv.ui.playback.segment.skipPress
+import org.jellyfin.androidtv.ui.playback.segment.SkipSegment
 import org.jellyfin.androidtv.util.sdk.end
 import org.jellyfin.androidtv.util.sdk.start
 import org.jellyfin.sdk.api.client.ApiClient
@@ -185,15 +184,18 @@ fun PlaybackController.applyMediaSegments(
 			mediaSegmentRepository.getSegmentsForItem(item)
 		}.getOrNull().orEmpty()
 
+		// Personal fork: ask-to-skip segments go to the skip button, which follows the playback position
+		val askToSkip = mutableListOf<SkipSegment>()
 		for (mediaSegment in mediaSegments) {
 			val action = mediaSegmentRepository.getMediaSegmentAction(mediaSegment)
 
 			when (action) {
 				MediaSegmentAction.SKIP -> addSkipAction(mediaSegment)
-				MediaSegmentAction.ASK_TO_SKIP -> addAskToSkipAction(mediaSegment)
+				MediaSegmentAction.ASK_TO_SKIP -> askToSkip += SkipSegment(mediaSegment.type, mediaSegment.start, mediaSegment.end)
 				MediaSegmentAction.NOTHING -> Unit
 			}
 		}
+		fragment?.setSkipSegments(askToSkip, hasNextItem())
 
 		callback()
 	}
@@ -209,20 +211,6 @@ private fun PlaybackController.addSkipAction(mediaSegment: MediaSegmentDto) {
 			fragment.lifecycleScope.launch(Dispatchers.Main) {
 				seek(mediaSegment.end.inWholeMilliseconds, true)
 			}
-		}
-		// Segments at position 0 will never be hit by ExoPlayer so we need to add a minimum value
-		.setPosition(mediaSegment.start.inWholeMilliseconds.coerceAtLeast(1))
-		.setDeleteAfterDelivery(false)
-		.send()
-}
-
-@OptIn(UnstableApi::class)
-private fun PlaybackController.addAskToSkipAction(mediaSegment: MediaSegmentDto) {
-	mVideoManager.mExoPlayer
-		.createMessage { _, _ ->
-			// Personal fork: the credits button plays the next episode when there is one
-			val press = skipPress(mediaSegment.type, hasNextItem())
-			fragment?.askToSkip(mediaSegment.end, nextEpisode = press == SkipPress.NEXT_EPISODE)
 		}
 		// Segments at position 0 will never be hit by ExoPlayer so we need to add a minimum value
 		.setPosition(mediaSegment.start.inWholeMilliseconds.coerceAtLeast(1))
