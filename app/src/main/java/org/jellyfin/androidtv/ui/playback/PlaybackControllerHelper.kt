@@ -17,8 +17,10 @@ import org.jellyfin.sdk.api.client.ApiClient
 import org.jellyfin.sdk.api.client.extensions.liveTvApi
 import org.jellyfin.sdk.model.api.BaseItemDto
 import org.jellyfin.sdk.model.api.MediaSegmentDto
+import org.jellyfin.sdk.model.api.MediaSegmentType
 import org.jellyfin.sdk.model.api.MediaStreamType
 import org.jellyfin.sdk.model.api.SubtitleDeliveryMethod
+import org.jellyfin.sdk.model.extensions.ticks
 import org.koin.android.ext.android.inject
 import timber.log.Timber
 import java.util.UUID
@@ -195,7 +197,12 @@ fun PlaybackController.applyMediaSegments(
 				MediaSegmentAction.NOTHING -> Unit
 			}
 		}
-		fragment?.setSkipSegments(askToSkip, hasNextItem())
+		fragment?.setSkipSegments(
+			segments = askToSkip,
+			hasNextItem = hasNextItem(),
+			runtime = item.runTimeTicks?.ticks,
+			hasCreditsMarker = mediaSegments.any { it.type == MediaSegmentType.OUTRO },
+		)
 
 		callback()
 	}
