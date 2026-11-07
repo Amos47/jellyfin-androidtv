@@ -188,6 +188,7 @@ fun CustomPlaybackOverlayFragment.recordProgram(program: BaseItemDto, isSeries: 
 	}
 }
 
-fun CustomPlaybackOverlayFragment.askToSkip(position: Duration) {
+fun CustomPlaybackOverlayFragment.askToSkip(position: Duration, nextEpisode: Boolean = false) {
+	binding.skipOverlay.nextEpisode = nextEpisode
 	binding.skipOverlay.targetPosition = position
 }

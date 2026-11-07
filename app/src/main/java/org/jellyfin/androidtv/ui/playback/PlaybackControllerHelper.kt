@@ -10,6 +10,8 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.jellyfin.androidtv.ui.playback.segment.MediaSegmentAction
 import org.jellyfin.androidtv.ui.playback.segment.MediaSegmentRepository
+import org.jellyfin.androidtv.ui.playback.segment.SkipPress
+import org.jellyfin.androidtv.ui.playback.segment.skipPress
 import org.jellyfin.androidtv.util.sdk.end
 import org.jellyfin.androidtv.util.sdk.start
 import org.jellyfin.sdk.api.client.ApiClient
@@ -218,7 +220,9 @@ private fun PlaybackController.addSkipAction(mediaSegment: MediaSegmentDto) {
 private fun PlaybackController.addAskToSkipAction(mediaSegment: MediaSegmentDto) {
 	mVideoManager.mExoPlayer
 		.createMessage { _, _ ->
-			fragment?.askToSkip(mediaSegment.end)
+			// Personal fork: the credits button plays the next episode when there is one
+			val press = skipPress(mediaSegment.type, hasNextItem())
+			fragment?.askToSkip(mediaSegment.end, nextEpisode = press == SkipPress.NEXT_EPISODE)
 		}
 		// Segments at position 0 will never be hit by ExoPlayer so we need to add a minimum value
 		.setPosition(mediaSegment.start.inWholeMilliseconds.coerceAtLeast(1))
