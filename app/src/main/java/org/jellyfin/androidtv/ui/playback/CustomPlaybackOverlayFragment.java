@@ -485,15 +485,18 @@ public class CustomPlaybackOverlayFragment extends Fragment implements LiveTvGui
                 if (binding.skipOverlay.getVisible()) {
                     // Hide without doing anything
                     if (keyCode == KeyEvent.KEYCODE_BACK || keyCode == KeyEvent.KEYCODE_BUTTON_B || keyCode == KeyEvent.KEYCODE_ESCAPE) {
-                        clearSkipOverlay();
+                        binding.skipOverlay.dismiss();
                         return true;
                     }
 
                     // Hide with seek
                     if (keyCode == KeyEvent.KEYCODE_DPAD_CENTER || keyCode == KeyEvent.KEYCODE_ENTER) {
-                        playbackControllerContainer.getValue().getPlaybackController().seek(binding.skipOverlay.getTargetPositionMs(), true);
+                        PlaybackController controller = playbackControllerContainer.getValue().getPlaybackController();
+                        // Personal fork: skipping the credits plays the next episode right away
+                        if (binding.skipOverlay.getNextEpisode() && controller.hasNextItem()) controller.next();
+                        else controller.seek(binding.skipOverlay.getTargetPositionMs(), true);
                         leanbackOverlayFragment.setShouldShowOverlay(false);
-                        if (binding != null) clearSkipOverlay();
+                        if (binding != null) binding.skipOverlay.dismiss();
                         return true;
                     }
                 }
@@ -1274,7 +1277,7 @@ public class CustomPlaybackOverlayFragment extends Fragment implements LiveTvGui
     }
 
     public void clearSkipOverlay() {
-        binding.skipOverlay.setTargetPositionMs(null);
+        binding.skipOverlay.setSegments(java.util.Collections.emptyList(), false);
     }
 
     private void prepareChapterAdapter() {

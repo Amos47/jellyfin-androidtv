@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -27,18 +26,20 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import org.jellyfin.androidtv.R
 import org.jellyfin.androidtv.ui.base.Icon
 import org.jellyfin.androidtv.ui.base.Text
 import org.jellyfin.androidtv.ui.playback.segment.MediaSegmentRepository
+import org.jellyfin.androidtv.ui.playback.segment.SkipSegment
+import org.jellyfin.androidtv.ui.playback.segment.skipPrompt
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
 
 @Composable
 fun SkipOverlayComposable(
 	visible: Boolean,
+	nextEpisode: Boolean = false,
 ) {
 	Box(
 		contentAlignment = Alignment.BottomEnd,
@@ -60,7 +61,8 @@ fun SkipOverlayComposable(
 				)
 
 				Text(
-					text = stringResource(R.string.segment_action_skip),
+					// Personal fork: skipping the credits plays the next episode
+					text = stringResource(if (nextEpisode) R.string.lbl_next_episode else R.string.segment_action_skip),
 					color = colorResource(R.color.button_default_normal_text),
 					fontSize = 18.sp,
 				)
@@ -77,18 +79,47 @@ class SkipOverlayView @JvmOverloads constructor(
 	private val _currentPosition = MutableStateFlow(Duration.ZERO)
 	private val _targetPosition = MutableStateFlow<Duration?>(null)
 	private val _skipUiEnabled = MutableStateFlow(true)
+	private val _nextEpisode = MutableStateFlow(false)
+
+	// Personal fork: the button follows the playback position, see skipPrompt
+	private var segments: List<SkipSegment> = emptyList()
+	private var hasNextItem = false
+	private var dismissedStart: Duration? = null
+	private var promptStart: Duration? = null
 
 	var currentPosition: Duration
 		get() = _currentPosition.value
 		set(value) {
 			_currentPosition.value = value
+			updatePrompt()
 		}
 
 	var currentPositionMs: Long
 		get() = _currentPosition.value.inWholeMilliseconds
 		set(value) {
-			_currentPosition.value = value.milliseconds
+			currentPosition = value.milliseconds
 		}
+
+	/** Personal fork: sets the segments to offer skipping for the current item, replacing the previous item's. */
+	fun setSegments(segments: List<SkipSegment>, hasNextItem: Boolean) {
+		this.segments = segments
+		this.hasNextItem = hasNextItem
+		dismissedStart = null
+		updatePrompt()
+	}
+
+	/** Personal fork: hides the button until playback reaches another segment. */
+	fun dismiss() {
+		dismissedStart = promptStart
+		updatePrompt()
+	}
+
+	private fun updatePrompt() {
+		val prompt = skipPrompt(_currentPosition.value, segments, hasNextItem, dismissedStart)
+		promptStart = prompt?.segmentStart
+		_nextEpisode.value = prompt?.nextEpisode == true
+		_targetPosition.value = prompt?.target
+	}
 
 	var targetPosition: Duration?
 		get() = _targetPosition.value
@@ -100,6 +131,13 @@ class SkipOverlayView @JvmOverloads constructor(
 		get() = _targetPosition.value?.inWholeMilliseconds
 		set(value) {
 			_targetPosition.value = value?.milliseconds
+		}
+
+	/** Personal fork: whether pressing the button plays the next episode instead of seeking. */
+	var nextEpisode: Boolean
+		get() = _nextEpisode.value
+		set(value) {
+			_nextEpisode.value = value
 		}
 
 	var skipUiEnabled: Boolean
@@ -127,12 +165,9 @@ class SkipOverlayView @JvmOverloads constructor(
 			derivedStateOf { visible }
 		}
 
-		// Auto hide
-		LaunchedEffect(skipUiEnabled, targetPosition) {
-			delay(MediaSegmentRepository.AskToSkipAutoHideDuration)
-			_targetPosition.value = null
-		}
+		val nextEpisode by _nextEpisode.collectAsState()
 
-		SkipOverlayComposable(visible)
+		// Personal fork: no auto hide, the button stays for the whole segment
+		SkipOverlayComposable(visible, nextEpisode)
 	}
 }

@@ -13,6 +13,7 @@ import org.jellyfin.androidtv.data.repository.ItemMutationRepository
 import org.jellyfin.androidtv.ui.GuideChannelHeader
 import org.jellyfin.androidtv.ui.asTimerInfoDto
 import org.jellyfin.androidtv.ui.livetv.TvManager
+import org.jellyfin.androidtv.ui.playback.segment.SkipSegment
 import org.jellyfin.sdk.api.client.ApiClient
 import org.jellyfin.sdk.api.client.extensions.liveTvApi
 import org.jellyfin.sdk.api.client.extensions.userLibraryApi
@@ -21,7 +22,6 @@ import org.koin.android.ext.android.inject
 import timber.log.Timber
 import java.time.Instant
 import java.util.UUID
-import kotlin.time.Duration
 
 fun CustomPlaybackOverlayFragment.toggleFavorite() {
 	val header = mSelectedProgramView as? GuideChannelHeader
@@ -188,6 +188,6 @@ fun CustomPlaybackOverlayFragment.recordProgram(program: BaseItemDto, isSeries: 
 	}
 }
 
-fun CustomPlaybackOverlayFragment.askToSkip(position: Duration) {
-	binding.skipOverlay.targetPosition = position
+fun CustomPlaybackOverlayFragment.setSkipSegments(segments: List<SkipSegment>, hasNextItem: Boolean) {
+	binding.skipOverlay.setSegments(segments, hasNextItem)
 }
