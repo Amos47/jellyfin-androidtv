@@ -84,6 +84,8 @@ class SkipOverlayView @JvmOverloads constructor(
 	// Personal fork: the button follows the playback position, see skipPrompt
 	private var segments: List<SkipSegment> = emptyList()
 	private var hasNextItem = false
+	private var runtime: Duration? = null
+	private var hasCreditsMarker = true
 	private var dismissedStart: Duration? = null
 	private var promptStart: Duration? = null
 
@@ -101,12 +103,17 @@ class SkipOverlayView @JvmOverloads constructor(
 		}
 
 	/** Personal fork: sets the segments to offer skipping for the current item, replacing the previous item's. */
-	fun setSegments(segments: List<SkipSegment>, hasNextItem: Boolean) {
+	fun setSegments(segments: List<SkipSegment>, hasNextItem: Boolean, runtime: Duration?, hasCreditsMarker: Boolean) {
 		this.segments = segments
 		this.hasNextItem = hasNextItem
+		this.runtime = runtime
+		this.hasCreditsMarker = hasCreditsMarker
 		dismissedStart = null
 		updatePrompt()
 	}
+
+	/** Personal fork: forgets the current item's segments, for example before the next item starts. */
+	fun clear() = setSegments(emptyList(), hasNextItem = false, runtime = null, hasCreditsMarker = true)
 
 	/** Personal fork: hides the button until playback reaches another segment. */
 	fun dismiss() {
@@ -115,7 +122,7 @@ class SkipOverlayView @JvmOverloads constructor(
 	}
 
 	private fun updatePrompt() {
-		val prompt = skipPrompt(_currentPosition.value, segments, hasNextItem, dismissedStart)
+		val prompt = skipPrompt(_currentPosition.value, segments, hasNextItem, dismissedStart, runtime, hasCreditsMarker)
 		promptStart = prompt?.segmentStart
 		_nextEpisode.value = prompt?.nextEpisode == true
 		_targetPosition.value = prompt?.target

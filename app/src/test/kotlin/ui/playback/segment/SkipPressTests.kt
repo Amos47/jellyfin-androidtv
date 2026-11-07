@@ -72,3 +72,36 @@ class SkipPromptTests : FunSpec({
 		skipPrompt(20.seconds, listOf(recap, intro), true, null)?.target shouldBe 55.seconds
 	}
 })
+
+class NextEpisodeFallbackTests : FunSpec({
+	val intro = SkipSegment(MediaSegmentType.INTRO, start = 10.seconds, end = 55.seconds)
+	val runtime = 22.minutes
+
+	fun prompt(position: Duration, hasNextItem: Boolean = true, hasCreditsMarker: Boolean = false, dismissed: Duration? = null) =
+		skipPrompt(position, listOf(intro), hasNextItem, dismissed, runtime, hasCreditsMarker)
+
+	test("Next episode in the last 30 seconds without a credits marker") {
+		prompt(runtime - 30.seconds) shouldBe SkipPrompt(target = runtime, nextEpisode = true, segmentStart = runtime - 30.seconds)
+		prompt(runtime - 2.seconds)?.nextEpisode shouldBe true
+	}
+
+	test("Nothing before the last 30 seconds") {
+		prompt(runtime - 31.seconds) shouldBe null
+	}
+
+	test("Nothing without a next episode") {
+		prompt(runtime - 10.seconds, hasNextItem = false) shouldBe null
+	}
+
+	test("Nothing when the credits have a marker, even one the user doesn't get asked about") {
+		prompt(runtime - 10.seconds, hasCreditsMarker = true) shouldBe null
+	}
+
+	test("Dismissing it keeps it hidden") {
+		prompt(runtime - 10.seconds, dismissed = runtime - 30.seconds) shouldBe null
+	}
+
+	test("Nothing without a known runtime") {
+		skipPrompt(21.minutes, listOf(intro), true, null, runtime = null, hasCreditsMarker = false) shouldBe null
+	}
+})
