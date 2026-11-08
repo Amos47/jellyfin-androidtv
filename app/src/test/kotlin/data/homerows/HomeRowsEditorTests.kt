@@ -57,6 +57,18 @@ private fun row(id: UUID = UUID.randomUUID(), provider: String = "genre", config
 	"""{"Id":"$id","Provider":"$provider","Title":null,"Config":$config,"Enabled":true$extra}"""
 
 class HomeRowsEditorTests : FunSpec({
+	test("editor loads the plain layout") {
+		val server = FakeServer("[${row()}]")
+		val editor = server.editor()
+
+		editor.load()
+
+		val calls = server.transport.calls.filter { it.path == "HomeRows/Configuration" }
+		// The editor goes through its own wrapper transport, so check what reached the server fake.
+		calls.isNotEmpty() shouldBe true
+		calls.all { it.query.isEmpty() } shouldBe true
+	}
+
 	test("load has no pending edits") {
 		val editor = FakeServer("[${row()},${row(provider = "next-up", config = "{}")}]").editor()
 

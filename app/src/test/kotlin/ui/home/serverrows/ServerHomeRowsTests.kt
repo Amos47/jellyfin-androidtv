@@ -85,6 +85,34 @@ class ServerHomeRowsTests : FunSpec({
 		buildServerRows(HomeRowsApi(transport) { "s" }) shouldBe null
 	}
 
+	test("buildServerRows requests the expanded layout") {
+		val id = UUID.randomUUID()
+		val transport = FakeHomeRowsTransport { _, path ->
+			if (path == "HomeRows/Configuration") HomeRowsHttpResult(200, configurationJson(id to true))
+			else HomeRowsHttpResult(200, itemsJson(path.split('/')[1]))
+		}
+
+		buildServerRows(HomeRowsApi(transport) { "s" })!!.map { it.row.id } shouldBe listOf(id)
+
+		val configurationCalls = transport.calls.filter { it.path == "HomeRows/Configuration" }
+		// The support probe stays plain; only the layout load asks for expand.
+		configurationCalls.map { it.query["expand"] } shouldBe listOf(null, "true")
+	}
+
+	test("row items request PlayAccess") {
+		val id = UUID.randomUUID()
+		val transport = FakeHomeRowsTransport { _, path ->
+			if (path == "HomeRows/Configuration") HomeRowsHttpResult(200, configurationJson(id to true))
+			else HomeRowsHttpResult(200, itemsJson(path.split('/')[1]))
+		}
+
+		buildServerRows(HomeRowsApi(transport) { "s" })
+
+		val fields = transport.calls.single { it.path == "HomeRows/$id/Items" }.query["fields"]!!.split(',')
+		fields.contains("PlayAccess") shouldBe true
+		fields.contains("Overview") shouldBe true
+	}
+
 	test("buildServerRows keeps order and drops failed rows") {
 		val ids = List(3) { UUID.randomUUID() }
 		val transport = FakeHomeRowsTransport { _, path ->

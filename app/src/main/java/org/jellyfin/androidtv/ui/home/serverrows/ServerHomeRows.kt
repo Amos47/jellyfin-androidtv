@@ -54,7 +54,7 @@ data class LoadedServerRow(
 suspend fun buildServerRows(api: HomeRowsApi, timeout: Duration = 10.seconds): List<LoadedServerRow>? {
 	if (!api.isSupported()) return null
 
-	val configuration = runCatching { api.getConfiguration() }
+	val configuration = runCatching { api.getConfiguration(expand = true) }
 		.onFailure { Timber.w(it, "Could not load the home rows layout") }
 		.getOrNull() ?: return null
 
