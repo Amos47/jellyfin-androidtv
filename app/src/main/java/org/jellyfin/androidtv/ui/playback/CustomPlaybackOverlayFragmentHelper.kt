@@ -8,6 +8,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.jellyfin.androidtv.R
+import org.jellyfin.sdk.model.api.BaseItemKind
 import org.jellyfin.androidtv.data.model.DataRefreshService
 import org.jellyfin.androidtv.data.repository.ItemMutationRepository
 import org.jellyfin.androidtv.ui.GuideChannelHeader
@@ -194,6 +195,7 @@ fun CustomPlaybackOverlayFragment.setSkipSegments(
 	hasNextItem: Boolean,
 	runtime: Duration?,
 	hasCreditsMarker: Boolean,
+	nextItemKind: BaseItemKind?,
 ) {
-	binding.skipOverlay.setSegments(segments, hasNextItem, runtime, hasCreditsMarker)
+	binding.skipOverlay.setSegments(segments, hasNextItem, runtime, hasCreditsMarker, nextItemKind)
 }

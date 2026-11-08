@@ -35,6 +35,7 @@ import androidx.leanback.widget.RowPresenter;
 import androidx.lifecycle.Lifecycle;
 
 import org.jellyfin.androidtv.R;
+import org.jellyfin.androidtv.data.itemactions.ActionPressGate;
 import org.jellyfin.androidtv.auth.repository.UserRepository;
 import org.jellyfin.androidtv.constant.CustomMessage;
 import org.jellyfin.androidtv.constant.QueryType;
@@ -765,6 +766,7 @@ public class FullDetailsFragment extends Fragment implements RecordingIndicatorV
     // Personal fork: buttons for the server's item actions, see FullDetailsFragmentHelper.addServerActions
     final List<TextUnderButton> serverActionButtons = new ArrayList<>();
     int actionsGeneration = 0;
+    final ActionPressGate actionPressGate = new ActionPressGate();
 
     private void addButtons(int buttonSize) {
         BaseItemDto baseItem = mBaseItem;

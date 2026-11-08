@@ -202,6 +202,7 @@ fun PlaybackController.applyMediaSegments(
 			hasNextItem = hasNextItem(),
 			runtime = item.runTimeTicks?.ticks,
 			hasCreditsMarker = mediaSegments.any { it.type == MediaSegmentType.OUTRO },
+			nextItemKind = getNextItem()?.type,
 		)
 
 		callback()

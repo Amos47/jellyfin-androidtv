@@ -45,3 +45,19 @@ fun <T> inQueueOrder(ids: List<UUID>, items: List<T>, id: (T) -> UUID): List<T> 
 	val byId = items.associateBy(id)
 	return ids.mapNotNull { byId[it] }
 }
+
+/** Ignores further presses of a server action while its queue fetch is in flight. */
+class ActionPressGate {
+	private var inFlight = false
+
+	/** True when this press may start; false while an earlier one is still in flight. */
+	fun tryStart(): Boolean {
+		if (inFlight) return false
+		inFlight = true
+		return true
+	}
+
+	fun finish() {
+		inFlight = false
+	}
+}

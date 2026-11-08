@@ -46,3 +46,22 @@ class ItemActionButtonsTests : FunSpec({
 		inQueueOrder(listOf(c, missing, a, b), listOf(a, b, c)) { it } shouldBe listOf(c, a, b)
 	}
 })
+
+class ActionPressGateTests : FunSpec({
+	test("a second press while one is in flight is ignored") {
+		val gate = ActionPressGate()
+
+		gate.tryStart() shouldBe true
+		gate.tryStart() shouldBe false
+	}
+
+	test("a finished press lets the next one start") {
+		val gate = ActionPressGate()
+
+		gate.tryStart()
+		gate.finish()
+
+		gate.tryStart() shouldBe true
+	}
+
+})

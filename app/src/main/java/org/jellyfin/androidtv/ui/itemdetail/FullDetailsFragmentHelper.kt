@@ -98,7 +98,10 @@ fun FullDetailsFragment.showDetailsMenu(
 	}
 
 	for (button in serverActionButtons) {
-		if (!button.isVisible) item(button.binding.label.text.toString()) { button.performClick() }
+		if (!button.isVisible) {
+			val label = (button.tag as? ItemAction)?.label ?: continue
+			item(label) { button.performClick() }
+		}
 	}
 
 	if (favButton?.isVisible == false) {
@@ -434,7 +437,7 @@ fun FullDetailsFragment.addServerActions(row: MyDetailsOverviewRow, item: BaseIt
 		val buttons = plan.buttons.map { (action, icon) ->
 			TextUnderButton.create(requireContext(), icon, buttonSize, 0, action.label) {
 				playActionQueue(item, action)
-			}
+			}.also { it.tag = action }
 		}
 
 		// The bound button row mirrors the row's actions, so the new views go in at the same index
@@ -464,6 +467,9 @@ private fun FullDetailsFragment.playActionQueue(item: BaseItemDto, action: ItemA
 	val api by inject<ApiClient>()
 	val itemActionsApi by inject<ItemActionsApi>()
 
+	// A second press while the queue is being fetched does nothing
+	if (!actionPressGate.tryStart()) return
+
 	lifecycleScope.launch {
 		val items = try {
 			withContext(Dispatchers.IO) {
@@ -477,6 +483,11 @@ private fun FullDetailsFragment.playActionQueue(item: BaseItemDto, action: ItemA
 			Timber.w(error, "Failed to get the ${action.id} queue for ${item.id}")
 			null
 		}
+
+		actionPressGate.finish()
+
+		// The press is dropped quietly when the page is no longer in front
+		if (!isResumed) return@launch
 
 		if (items.isNullOrEmpty()) {
 			if (items != null) Timber.w("The ${action.id} queue for ${item.id} is empty")

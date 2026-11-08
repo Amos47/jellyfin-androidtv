@@ -43,7 +43,7 @@ class ItemActionsApi(private val transport: HomeRowsTransport) {
 	} catch (error: CancellationException) {
 		throw error
 	} catch (@Suppress("TooGenericExceptionCaught") error: Exception) {
-		Timber.w(error, "Failed to get item actions for $itemId")
+		Timber.d(error, "Failed to get item actions for $itemId")
 		emptyList()
 	}
 
