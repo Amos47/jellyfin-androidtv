@@ -23,7 +23,9 @@ import org.jellyfin.androidtv.preference.constant.NextUpBehavior;
 import org.jellyfin.androidtv.preference.constant.RefreshRateSwitchingBehavior;
 import org.jellyfin.androidtv.preference.constant.StillWatchingBehavior;
 import org.jellyfin.androidtv.preference.constant.ZoomMode;
+import org.jellyfin.androidtv.ui.AfterItem;
 import org.jellyfin.androidtv.ui.InteractionTrackerViewModel;
+import org.jellyfin.androidtv.ui.InteractionTrackerViewModelKt;
 import org.jellyfin.androidtv.ui.livetv.TvManager;
 import org.jellyfin.androidtv.util.TimeUtils;
 import org.jellyfin.androidtv.util.Utils;
@@ -1200,16 +1202,17 @@ public class PlaybackController implements PlaybackControllerNotifiable {
         Timber.i("Moving to next queue item. Index: %s", (mCurrentIndex + 1));
         boolean stillWatchingEnabled = userPreferences.getValue().get(UserPreferences.Companion.getStillWatchingBehavior()) != StillWatchingBehavior.DISABLED;
         boolean nextUpEnabled = userPreferences.getValue().get(UserPreferences.Companion.getNextUpBehavior()) != NextUpBehavior.DISABLED;
-        if ((stillWatchingEnabled || nextUpEnabled) && curItem.getType() != BaseItemKind.TRAILER) {
+        AfterItem after = InteractionTrackerViewModelKt.afterItemComplete(curItem, stillWatchingEnabled, nextUpEnabled, interactionTracker.getShowStillWatching());
+        if (after != AfterItem.PLAY_NEXT) {
             mCurrentIndex++;
             videoQueueManager.getValue().setCurrentMediaPosition(mCurrentIndex);
             spinnerOff = false;
 
             if (mFragment != null) {
-                if (stillWatchingEnabled && interactionTracker.getShowStillWatching()) {
+                if (after == AfterItem.STILL_WATCHING) {
                     // Show "Still Watching" fragment
                     mFragment.showStillWatching(nextItem.getId());
-                } else if (nextUpEnabled) {
+                } else if (after == AfterItem.NEXT_UP) {
                     // Show "Next Up" fragment
                     mFragment.showNextUp(nextItem.getId());
                 }

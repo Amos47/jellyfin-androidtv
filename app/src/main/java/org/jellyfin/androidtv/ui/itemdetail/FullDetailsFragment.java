@@ -1241,6 +1241,8 @@ public class FullDetailsFragment extends Fragment implements RecordingIndicatorV
     void play(final List<BaseItemDto> items, final int pos, final boolean shuffle) {
         if (items.isEmpty()) return;
         if (shuffle) Collections.shuffle(items);
+        // Queues of trailers (or episodes) start a binge-protection session; anything else is a no-op
+        if (pos >= 0 && pos < items.size()) interactionTracker.getValue().notifyStartSession(items.get(pos), items);
         KoinJavaComponent.<PlaybackLauncher>get(PlaybackLauncher.class).launch(getContext(), items, pos);
     }
 }

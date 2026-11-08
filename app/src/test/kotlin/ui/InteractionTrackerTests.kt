@@ -93,4 +93,20 @@ class InteractionTrackerTests : FunSpec({
 		t.notifyStartSession(episode, listOf(episode))
 		t.getShowStillWatching() shouldBe true // single episode: no reset
 	}
+
+	test("after item: trailers skip Next Up but not Still watching") {
+		for (trailer in listOf(queuedTrailer, trailerKind)) {
+			afterItemComplete(trailer, true, true, false) shouldBe AfterItem.PLAY_NEXT
+			afterItemComplete(trailer, true, true, true) shouldBe AfterItem.STILL_WATCHING
+			afterItemComplete(trailer, false, true, false) shouldBe AfterItem.PLAY_NEXT
+		}
+	}
+
+	test("after item: episodes unchanged") {
+		afterItemComplete(episode, true, true, false) shouldBe AfterItem.NEXT_UP
+		afterItemComplete(episode, true, true, true) shouldBe AfterItem.STILL_WATCHING
+		afterItemComplete(episode, false, true, true) shouldBe AfterItem.NEXT_UP
+		afterItemComplete(episode, true, false, false) shouldBe AfterItem.END
+		afterItemComplete(episode, false, false, false) shouldBe AfterItem.PLAY_NEXT
+	}
 })
