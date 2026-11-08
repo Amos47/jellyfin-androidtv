@@ -130,7 +130,7 @@ public class FullDetailsFragment extends Fragment implements RecordingIndicatorV
     private MutableObjectAdapter<Row> mRowsAdapter;
 
     private MyDetailsOverviewRowPresenter mDorPresenter;
-    private MyDetailsOverviewRow mDetailsOverviewRow;
+    MyDetailsOverviewRow mDetailsOverviewRow;
     private CustomListRowPresenter mListRowPresenter;
 
     private Handler mLoopHandler = new Handler();
@@ -762,9 +762,14 @@ public class FullDetailsFragment extends Fragment implements RecordingIndicatorV
     TextUnderButton moreButton;
     TextUnderButton playButton = null;
     TextUnderButton trailerButton = null;
+    // Personal fork: buttons for the server's item actions, see FullDetailsFragmentHelper.addServerActions
+    final List<TextUnderButton> serverActionButtons = new ArrayList<>();
+    int actionsGeneration = 0;
 
     private void addButtons(int buttonSize) {
         BaseItemDto baseItem = mBaseItem;
+        actionsGeneration++;
+        serverActionButtons.clear();
         String buttonLabel;
         if (baseItem.getType() == BaseItemKind.SERIES) {
             buttonLabel = getString(R.string.lbl_play_next_up);
@@ -854,6 +859,9 @@ public class FullDetailsFragment extends Fragment implements RecordingIndicatorV
             });
             mDetailsOverviewRow.addAction(mVersionsButton);
         }
+
+        // Personal fork: the server's action buttons go here once it answers, the page doesn't wait for them
+        FullDetailsFragmentHelperKt.addServerActions(this, mDetailsOverviewRow, mBaseItem, mDetailsOverviewRow.getActions().size(), buttonSize);
 
         if (TrailerUtils.hasPlayableTrailers(requireContext(), mBaseItem)) {
             trailerButton = TextUnderButton.create(requireContext(), R.drawable.ic_trailer, buttonSize, 0, getString(R.string.lbl_play_trailers), new View.OnClickListener() {
@@ -1123,6 +1131,7 @@ public class FullDetailsFragment extends Fragment implements RecordingIndicatorV
         // added in order of priority (should match res/menu/menu_details_more.xml)
         if (queueButton != null) actionsList.add(queueButton);
         if (trailerButton != null) actionsList.add(trailerButton);
+        actionsList.addAll(serverActionButtons);
         if (shuffleButton != null) actionsList.add(shuffleButton);
         if (favButton != null) actionsList.add(favButton);
         if (goToSeriesButton != null) actionsList.add(goToSeriesButton);
