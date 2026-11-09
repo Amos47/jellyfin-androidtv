@@ -95,3 +95,25 @@ class FocusTargetTests : FunSpec({
 		focusTargetFor(emptyList(), focused = null, canFocus) shouldBe null
 	}
 })
+
+class ShouldTakeFocusTests : FunSpec({
+	test("nothing focused: take focus") {
+		shouldTakeFocus(hasFocus = false, focusAttached = false, focusInRow = false, rowRebuilt = false) shouldBe true
+	}
+
+	test("focus on a view that left the window: take focus") {
+		shouldTakeFocus(hasFocus = true, focusAttached = false, focusInRow = false, rowRebuilt = false) shouldBe true
+	}
+
+	test("focus on a button row button that is going away: take focus") {
+		shouldTakeFocus(hasFocus = true, focusAttached = true, focusInRow = true, rowRebuilt = false) shouldBe true
+	}
+
+	test("focus the user moved outside the button row (toolbar, rows below) is left alone") {
+		shouldTakeFocus(hasFocus = true, focusAttached = true, focusInRow = false, rowRebuilt = false) shouldBe false
+	}
+
+	test("a button row just attached or re-added takes focus") {
+		shouldTakeFocus(hasFocus = true, focusAttached = true, focusInRow = false, rowRebuilt = true) shouldBe true
+	}
+})

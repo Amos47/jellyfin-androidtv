@@ -4,7 +4,6 @@ import android.content.ActivityNotFoundException
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Toast
-import androidx.core.view.doOnAttach
 import androidx.core.view.isVisible
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.CancellationException
@@ -16,6 +15,7 @@ import org.jellyfin.androidtv.data.itemactions.ItemAction
 import org.jellyfin.androidtv.data.itemactions.ItemActionsApi
 import org.jellyfin.androidtv.data.itemactions.actionButtonsFor
 import org.jellyfin.androidtv.data.itemactions.focusTargetFor
+import org.jellyfin.androidtv.data.itemactions.shouldTakeFocus
 import org.jellyfin.androidtv.data.itemactions.inQueueOrder
 import org.jellyfin.androidtv.data.model.DataRefreshService
 import org.jellyfin.androidtv.data.repository.ItemMutationRepository
@@ -463,28 +463,48 @@ fun FullDetailsFragment.addServerActions(row: MyDetailsOverviewRow, item: BaseIt
 }
 
 /**
- * Focuses the item page's default button (see [focusTargetFor]): focus on a button that stays is kept, and so is focus
- * the user moved elsewhere on the page. Focus on a view outside the window (left over from the page before, or from a
- * removed button) is replaced. Before the button row is in the window this waits for it to be attached, as the page
- * may not have focus anywhere else (a virtual film has no Play button to take it).
+ * Focuses the item page's default button (see [focusTargetFor]), preferring [preferred] or the focused button while
+ * they stay. Focus the user moved anywhere else in the window (the rows below, an overlay) is left alone, see
+ * [shouldTakeFocus]; [rowRebuilt] is set when the button row was just attached or re-added, so its focus was dropped.
+ * Before the button row is in the window this waits for it to be attached, with one pending request per page.
  */
-fun FullDetailsFragment.focusDefaultButton() {
+@JvmOverloads
+fun FullDetailsFragment.focusDefaultButton(preferred: TextUnderButton? = null, rowRebuilt: Boolean = false) {
 	val row = mDetailsOverviewRow ?: return
 	val buttons = row.actions
 	val focused = buttons.firstOrNull { it.isAttachedToWindow && it.isFocused }
-	val target = focusTargetFor(buttons, focused) { it.isVisible && it.isEnabled && it.isFocusable } ?: return
+	val target = focusTargetFor(buttons, preferred ?: focused) { it.isVisible && it.isEnabled && it.isFocusable } ?: return
 	if (target === focused) return
 
 	if (!target.isAttachedToWindow) {
-		target.doOnAttach { view ->
-			view.post { if (isAdded && row === mDetailsOverviewRow) focusDefaultButton() }
+		// Replace the pending request: the default can change (a server button arrives) before the row is attached
+		pendingFocusView?.removeOnAttachStateChangeListener(pendingFocusListener)
+		val listener = object : View.OnAttachStateChangeListener {
+			override fun onViewAttachedToWindow(view: View) {
+				view.removeOnAttachStateChangeListener(this)
+				if (pendingFocusListener === this) {
+					pendingFocusView = null
+					pendingFocusListener = null
+				}
+				view.post { if (isAdded && row === mDetailsOverviewRow) focusDefaultButton(rowRebuilt = true) }
+			}
+
+			override fun onViewDetachedFromWindow(view: View) = Unit
 		}
+		pendingFocusView = target
+		pendingFocusListener = listener
+		target.addOnAttachStateChangeListener(listener)
 		return
 	}
 
-	val pageFocus = view?.findFocus()
-	val userFocusElsewhere = pageFocus != null && pageFocus.isAttachedToWindow && pageFocus.parent !== target.parent
-	if (!userFocusElsewhere) target.requestFocus()
+	val windowFocus = activity?.currentFocus
+	val take = shouldTakeFocus(
+		hasFocus = windowFocus != null,
+		focusAttached = windowFocus?.isAttachedToWindow == true,
+		focusInRow = windowFocus != null && windowFocus.parent === target.parent,
+		rowRebuilt = rowRebuilt,
+	)
+	if (take) target.requestFocus()
 }
 
 /** Plays a `play-queue` action: the server's queue ids, fetched in one call and played in the server's order. */

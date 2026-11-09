@@ -171,6 +171,11 @@ public class FullDetailsFragment extends Fragment implements RecordingIndicatorV
         mRowsFragment.setOnItemViewSelectedListener(new ItemViewSelectedListener());
 
         mDorPresenter = new MyDetailsOverviewRowPresenter(markdownRenderer.getValue());
+        // Personal fork: re-adding the buttons drops their focus, put it back on the same button or the default
+        mDorPresenter.setOnButtonsRebound(focusedButton -> {
+            FullDetailsFragmentHelperKt.focusDefaultButton(this, focusedButton, true);
+            return null;
+        });
 
         mItemId = Utils.uuidOrNull(getArguments().getString("ItemId"));
         mChannelId = Utils.uuidOrNull(getArguments().getString("ChannelId"));
@@ -768,6 +773,9 @@ public class FullDetailsFragment extends Fragment implements RecordingIndicatorV
     final List<TextUnderButton> serverActionButtons = new ArrayList<>();
     int actionsGeneration = 0;
     final ActionPressGate actionPressGate = new ActionPressGate();
+    // Personal fork: the one pending focusDefaultButton request waiting for the button row to be attached
+    View pendingFocusView = null;
+    View.OnAttachStateChangeListener pendingFocusListener = null;
 
     private void addButtons(int buttonSize) {
         BaseItemDto baseItem = mBaseItem;
@@ -1094,11 +1102,10 @@ public class FullDetailsFragment extends Fragment implements RecordingIndicatorV
         boolean resumeButtonVisible = isSeries ? nextUpEpisode != null : JavaCompat.getCanResume(mBaseItem);
         mResumeButton.setVisibility(resumeButtonVisible ? View.VISIBLE : View.GONE);
 
-        if (resumeButtonVisible) {
-            mResumeButton.requestFocus();
-        } else {
-            playButton.requestFocus();
-        }
+        // Personal fork: a button outside the window is focused once it's attached, focusing it now would strand focus
+        TextUnderButton focusButton = resumeButtonVisible ? mResumeButton : playButton;
+        if (focusButton.isAttachedToWindow()) focusButton.requestFocus();
+        else FullDetailsFragmentHelperKt.focusDefaultButton(this, focusButton);
     }
 
     private void addVersionsMenu(View v) {
@@ -1119,7 +1126,8 @@ public class FullDetailsFragment extends Fragment implements RecordingIndicatorV
 
                     mBaseItem = item;
                     mDorPresenter.getViewHolder().setItem(mDetailsOverviewRow);
-                    if (mVersionsButton != null) mVersionsButton.requestFocus();
+                    if (mVersionsButton != null && mVersionsButton.isAttachedToWindow()) mVersionsButton.requestFocus();
+                    else FullDetailsFragmentHelperKt.focusDefaultButton(FullDetailsFragment.this, null, true);
                     return null;
                 });
                 return true;

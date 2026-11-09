@@ -48,6 +48,14 @@ fun actionButtonsFor(actions: List<ItemAction>, hasLocalTrailers: Boolean): Acti
 fun <T> focusTargetFor(buttons: List<T>, focused: T?, canFocus: (T) -> Boolean): T? =
 	focused?.takeIf { it in buttons && canFocus(it) } ?: buttons.firstOrNull(canFocus)
 
+/**
+ * Whether the item page moves focus to its default button. It does when nothing has focus, when the focused view has
+ * left the window (stale focus crashes the next D-pad press), when focus is on a button row button that is going away,
+ * or when the button row was just attached or re-added. Any other focus in the window is the user's choice.
+ */
+fun shouldTakeFocus(hasFocus: Boolean, focusAttached: Boolean, focusInRow: Boolean, rowRebuilt: Boolean): Boolean =
+	!hasFocus || !focusAttached || focusInRow || rowRebuilt
+
 /** Puts [items] in the order of [ids]; ids without an item (not returned by the server) are skipped. */
 fun <T> inQueueOrder(ids: List<UUID>, items: List<T>, id: (T) -> UUID): List<T> {
 	val byId = items.associateBy(id)

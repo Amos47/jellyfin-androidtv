@@ -4,6 +4,7 @@ import android.view.ViewGroup
 import androidx.core.view.isVisible
 import androidx.leanback.widget.RowPresenter
 import org.jellyfin.androidtv.ui.DetailRowView
+import org.jellyfin.androidtv.ui.TextUnderButton
 import org.jellyfin.androidtv.ui.itemdetail.MyDetailsOverviewRow
 import org.jellyfin.androidtv.util.InfoLayoutHelper
 import org.jellyfin.androidtv.util.MarkdownRenderer
@@ -15,6 +16,7 @@ class MyDetailsOverviewRowPresenter(
 	class ViewHolder(
 		private val detailRowView: DetailRowView,
 		private val markdownRenderer: MarkdownRenderer,
+		private val onButtonsRebound: ((TextUnderButton) -> Unit)?,
 	) : RowPresenter.ViewHolder(detailRowView) {
 		private val binding get() = detailRowView.binding
 
@@ -42,6 +44,8 @@ class MyDetailsOverviewRowPresenter(
 				binding.fdGenreRow.isVisible = false
 			}
 
+			// Personal fork: re-adding a focused button drops its focus, so the page puts it back after
+			val focusedButton = binding.fdButtonRow.focusedChild as? TextUnderButton
 			binding.fdButtonRow.removeAllViews()
 			for (button in row.actions) {
 				val parent = button.parent
@@ -49,6 +53,7 @@ class MyDetailsOverviewRowPresenter(
 
 				binding.fdButtonRow.addView(button)
 			}
+			if (focusedButton != null) onButtonsRebound?.invoke(focusedButton)
 		}
 
 		fun setTitle(title: String?) {
@@ -67,13 +72,16 @@ class MyDetailsOverviewRowPresenter(
 	var viewHolder: ViewHolder? = null
 		private set
 
+	/** Called with the button that had focus when [ViewHolder.setItem] re-added the buttons. */
+	var onButtonsRebound: ((TextUnderButton) -> Unit)? = null
+
 	init {
 		syncActivatePolicy = SYNC_ACTIVATED_CUSTOM
 	}
 
 	override fun createRowViewHolder(parent: ViewGroup): ViewHolder {
 		val view = DetailRowView(parent.context)
-		viewHolder = ViewHolder(view, markdownRenderer)
+		viewHolder = ViewHolder(view, markdownRenderer) { onButtonsRebound?.invoke(it) }
 		return viewHolder!!
 	}
 
