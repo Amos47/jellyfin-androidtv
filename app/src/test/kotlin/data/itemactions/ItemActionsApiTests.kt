@@ -56,4 +56,36 @@ class ItemActionsApiTests : FunSpec({
 
 		shouldThrow<ItemActionsException> { ItemActionsApi(transport).getQueue(itemId, "watch-trailer") }.status shouldBe 404
 	}
+
+	test("actions decode state, labels and enabled") {
+		val transport = FakeHomeRowsTransport { _, _ ->
+			HomeRowsHttpResult(
+				200,
+				"""[{"Id":"save","Label":"Save","Icon":"bookmark","Kind":"toggle","State":"off","Labels":{"on":"Saved","off":"Save"},"Enabled":true},
+				{"Id":"download","Label":"Requested","Icon":"download","Kind":"request","State":"requested","Enabled":false}]"""
+			)
+		}
+
+		ItemActionsApi(transport).getActions(itemId) shouldBe listOf(
+			ItemAction("save", "Save", "bookmark", "toggle", state = "off", labels = mapOf("on" to "Saved", "off" to "Save"), enabled = true),
+			ItemAction("download", "Requested", "download", "request", state = "requested", enabled = false),
+		)
+	}
+
+	test("post sends the action and answers the updated one") {
+		val transport = FakeHomeRowsTransport { _, _ ->
+			HomeRowsHttpResult(200, """{"Id":"save","Label":"Saved","Icon":"bookmark","Kind":"toggle","State":"on","Enabled":true}""")
+		}
+
+		ItemActionsApi(transport).post(itemId, "save") shouldBe
+			ItemAction("save", "Saved", "bookmark", "toggle", state = "on", enabled = true)
+		transport.calls.single().method shouldBe "POST"
+		transport.calls.single().path shouldBe "Items/$itemId/Actions/save"
+	}
+
+	test("post failures give null") {
+		ItemActionsApi(FakeHomeRowsTransport { _, _ -> HomeRowsHttpResult(400, "") }).post(itemId, "download") shouldBe null
+		ItemActionsApi(FakeHomeRowsTransport { _, _ -> HomeRowsHttpResult(200, "not json") }).post(itemId, "save") shouldBe null
+		ItemActionsApi(FakeHomeRowsTransport { _, _ -> throw IOException("offline") }).post(itemId, "save") shouldBe null
+	}
 })

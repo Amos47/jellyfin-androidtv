@@ -11,13 +11,17 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.jellyfin.androidtv.R
+import org.jellyfin.androidtv.data.itemactions.ITEM_ACTION_KIND_PLAY_QUEUE
 import org.jellyfin.androidtv.data.itemactions.ItemAction
 import org.jellyfin.androidtv.data.itemactions.ItemActionsApi
 import org.jellyfin.androidtv.data.itemactions.actionButtonsFor
+import org.jellyfin.androidtv.data.itemactions.actionIcon
+import org.jellyfin.androidtv.data.itemactions.actionUpdatesById
 import org.jellyfin.androidtv.data.itemactions.focusRowsBelowButtons
 import org.jellyfin.androidtv.data.itemactions.focusTargetFor
 import org.jellyfin.androidtv.data.itemactions.shouldTakeFocus
 import org.jellyfin.androidtv.data.itemactions.inQueueOrder
+import org.jellyfin.androidtv.data.itemactions.isPressable
 import org.jellyfin.androidtv.data.model.DataRefreshService
 import org.jellyfin.androidtv.data.repository.ItemMutationRepository
 import org.jellyfin.androidtv.data.repository.ItemRepository
@@ -101,8 +105,9 @@ fun FullDetailsFragment.showDetailsMenu(
 
 	for (button in serverActionButtons) {
 		if (!button.isVisible) {
-			val label = (button.tag as? ItemAction)?.label ?: continue
-			item(label) { button.performClick() }
+			// A disabled action (Requested, Downloading) does nothing when pressed, so the menu leaves it out
+			val action = (button.tag as? ItemAction)?.takeIf(::isPressable) ?: continue
+			item(action.label) { button.performClick() }
 		}
 	}
 
@@ -441,9 +446,11 @@ fun FullDetailsFragment.addServerActions(row: MyDetailsOverviewRow, item: BaseIt
 		}
 
 		val buttons = plan.buttons.map { (action, icon) ->
-			TextUnderButton.create(requireContext(), icon, buttonSize, 0, action.label) {
-				playActionQueue(item, action)
-			}.also { it.tag = action }
+			TextUnderButton.create(requireContext(), icon, buttonSize, 0, action.label) { button ->
+				val current = button.tag as ItemAction
+				if (current.kind == ITEM_ACTION_KIND_PLAY_QUEUE) playActionQueue(item, current)
+				else runAction(item, button as TextUnderButton)
+			}.also { it.showAction(action) }
 		}
 
 		// The bound button row mirrors the row's actions, so the new views go in at the same index
@@ -518,6 +525,52 @@ fun FullDetailsFragment.focusDefaultButton(preferred: TextUnderButton? = null, r
 	if (take) target.requestFocus()
 }
 
+/**
+ * Shows [action] on its button: label, icon, and dimmed when the server disabled it. A disabled button stays focusable
+ * so focus never gets stuck on the row; a press on it does nothing (see [runAction]).
+ */
+private fun TextUnderButton.showAction(action: ItemAction) {
+	tag = action
+	setLabel(action.label)
+	setIcon(actionIcon(action), binding.imageButton.maxHeight)
+	alpha = if (isPressable(action)) 1f else DISABLED_ACTION_ALPHA
+}
+
+private const val DISABLED_ACTION_ALPHA = 0.4f
+
+/**
+ * Runs a `toggle` (Save) or `request` (Download) action on the server, then fetches the page's actions again and shows
+ * them on the page's current buttons by id: one press can change other buttons too (a Download also saves the title).
+ * A failure leaves the buttons as they were and says so while the page is in front.
+ */
+private fun FullDetailsFragment.runAction(item: BaseItemDto, button: TextUnderButton) {
+	val itemActionsApi by inject<ItemActionsApi>()
+	val action = button.tag as ItemAction
+	if (!isPressable(action) || !actionPressGate.tryStart()) return
+
+	lifecycleScope.launch {
+		val (posted, refreshed) = try {
+			withContext(Dispatchers.IO) {
+				val posted = itemActionsApi.post(item.id, action.id)
+				posted to (if (posted != null) itemActionsApi.getActions(item.id) else emptyList())
+			}
+		} finally {
+			actionPressGate.finish()
+		}
+		if (!isAdded) return@launch
+
+		if (posted == null) {
+			// The press is dropped quietly when the page is no longer in front
+			if (isResumed) Toast.makeText(requireContext(), getString(R.string.item_action_failed), Toast.LENGTH_LONG).show()
+			return@launch
+		}
+		// The page may have rebuilt its buttons meanwhile: the answer goes to whatever buttons it shows now for this item
+		if (mBaseItem?.id != item.id) return@launch
+		actionUpdatesById(serverActionButtons.toList(), { it.tag as? ItemAction }, refreshed, posted)
+			.forEach { (serverButton, updated) -> serverButton.showAction(updated) }
+	}
+}
+
 /** Plays a `play-queue` action: the server's queue ids, fetched in one call and played in the server's order. */
 private fun FullDetailsFragment.playActionQueue(item: BaseItemDto, action: ItemAction) {
 	val api by inject<ApiClient>()
@@ -538,9 +591,9 @@ private fun FullDetailsFragment.playActionQueue(item: BaseItemDto, action: ItemA
 		} catch (@Suppress("TooGenericExceptionCaught") error: Exception) {
 			Timber.w(error, "Failed to get the ${action.id} queue for ${item.id}")
 			null
+		} finally {
+			actionPressGate.finish()
 		}
-
-		actionPressGate.finish()
 
 		// The press is dropped quietly when the page is no longer in front
 		if (!isResumed) return@launch
