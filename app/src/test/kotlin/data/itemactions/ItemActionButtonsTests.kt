@@ -62,6 +62,34 @@ class ItemActionButtonsTests : FunSpec({
 		isPressable(download.copy(state = "requested", enabled = false)) shouldBe false
 	}
 
+	test("answered actions go to the buttons with the same id") {
+		val save = ItemAction("save", "Save", "bookmark", "toggle", state = "off", enabled = true)
+		val download = ItemAction("download", "Download", "download", "request", state = "available", enabled = true)
+		val savedNow = save.copy(label = "Saved", state = "on")
+		val requested = download.copy(label = "Requested", state = "requested", enabled = false)
+		val buttons = listOf("trailer" to watchTrailer, "save" to save, "download" to download)
+
+		// A Download press: the refetch says Saved too, the POST answer is the one for the pressed action
+		val updates = actionUpdatesById(buttons, { it.second }, refreshed = listOf(watchTrailer, savedNow, download), posted = requested)
+
+		updates.map { (button, action) -> button.first to action } shouldBe listOf(
+			"trailer" to watchTrailer,
+			"save" to savedNow,
+			"download" to requested,
+		)
+	}
+
+	test("buttons the answer doesn't name are left alone, a failed refetch still applies the POST answer") {
+		val save = ItemAction("save", "Save", "bookmark", "toggle", state = "off")
+		val download = ItemAction("download", "Download", "download", "request", state = "available")
+		val requested = download.copy(label = "Requested", state = "requested", enabled = false)
+		val buttons = listOf("save" to save, "download" to download, "none" to null)
+
+		val updates = actionUpdatesById(buttons, { it.second }, refreshed = emptyList(), posted = requested)
+
+		updates.map { (button, action) -> button.first to action } shouldBe listOf("download" to requested)
+	}
+
 	test("items are put in queue order") {
 		val a = UUID.randomUUID()
 		val b = UUID.randomUUID()

@@ -16,6 +16,7 @@ import org.jellyfin.androidtv.data.itemactions.ItemAction
 import org.jellyfin.androidtv.data.itemactions.ItemActionsApi
 import org.jellyfin.androidtv.data.itemactions.actionButtonsFor
 import org.jellyfin.androidtv.data.itemactions.actionIcon
+import org.jellyfin.androidtv.data.itemactions.actionUpdatesById
 import org.jellyfin.androidtv.data.itemactions.focusRowsBelowButtons
 import org.jellyfin.androidtv.data.itemactions.focusTargetFor
 import org.jellyfin.androidtv.data.itemactions.shouldTakeFocus
@@ -104,8 +105,9 @@ fun FullDetailsFragment.showDetailsMenu(
 
 	for (button in serverActionButtons) {
 		if (!button.isVisible) {
-			val label = (button.tag as? ItemAction)?.label ?: continue
-			item(label) { button.performClick() }
+			// A disabled action (Requested, Downloading) does nothing when pressed, so the menu leaves it out
+			val action = (button.tag as? ItemAction)?.takeIf(::isPressable) ?: continue
+			item(action.label) { button.performClick() }
 		}
 	}
 
@@ -537,8 +539,9 @@ private fun TextUnderButton.showAction(action: ItemAction) {
 private const val DISABLED_ACTION_ALPHA = 0.4f
 
 /**
- * Runs a `toggle` (Save) or `request` (Download) action on the server and shows the action it answers on [button]. A
- * failure leaves the button as it was and says so.
+ * Runs a `toggle` (Save) or `request` (Download) action on the server, then fetches the page's actions again and shows
+ * them on the page's current buttons by id: one press can change other buttons too (a Download also saves the title).
+ * A failure leaves the buttons as they were and says so while the page is in front.
  */
 private fun FullDetailsFragment.runAction(item: BaseItemDto, button: TextUnderButton) {
 	val itemActionsApi by inject<ItemActionsApi>()
@@ -546,16 +549,25 @@ private fun FullDetailsFragment.runAction(item: BaseItemDto, button: TextUnderBu
 	if (!isPressable(action) || !actionPressGate.tryStart()) return
 
 	lifecycleScope.launch {
-		val updated = withContext(Dispatchers.IO) { itemActionsApi.post(item.id, action.id) }
-		actionPressGate.finish()
+		val (posted, refreshed) = try {
+			withContext(Dispatchers.IO) {
+				val posted = itemActionsApi.post(item.id, action.id)
+				posted to (if (posted != null) itemActionsApi.getActions(item.id) else emptyList())
+			}
+		} finally {
+			actionPressGate.finish()
+		}
 		if (!isAdded) return@launch
 
-		if (updated == null) {
-			Toast.makeText(requireContext(), getString(R.string.item_action_failed), Toast.LENGTH_LONG).show()
+		if (posted == null) {
+			// The press is dropped quietly when the page is no longer in front
+			if (isResumed) Toast.makeText(requireContext(), getString(R.string.item_action_failed), Toast.LENGTH_LONG).show()
 			return@launch
 		}
-		// The page may have rebuilt its buttons meanwhile; the answer only goes to the button that was pressed
-		if (button.tag === action) button.showAction(updated)
+		// The page may have rebuilt its buttons meanwhile: the answer goes to whatever buttons it shows now for this item
+		if (mBaseItem?.id != item.id) return@launch
+		actionUpdatesById(serverActionButtons.toList(), { it.tag as? ItemAction }, refreshed, posted)
+			.forEach { (serverButton, updated) -> serverButton.showAction(updated) }
 	}
 }
 
@@ -579,9 +591,9 @@ private fun FullDetailsFragment.playActionQueue(item: BaseItemDto, action: ItemA
 		} catch (@Suppress("TooGenericExceptionCaught") error: Exception) {
 			Timber.w(error, "Failed to get the ${action.id} queue for ${item.id}")
 			null
+		} finally {
+			actionPressGate.finish()
 		}
-
-		actionPressGate.finish()
 
 		// The press is dropped quietly when the page is no longer in front
 		if (!isResumed) return@launch

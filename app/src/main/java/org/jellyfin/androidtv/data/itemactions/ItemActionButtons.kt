@@ -75,6 +75,25 @@ fun <T> focusRowsBelowButtons(buttons: List<T>, canFocus: (T) -> Boolean): Boole
 fun shouldTakeFocus(hasFocus: Boolean, focusAttached: Boolean, focusInRow: Boolean, rowRebuilt: Boolean): Boolean =
 	!hasFocus || !focusAttached || focusInRow || rowRebuilt
 
+/**
+ * Pairs each of [buttons] with its new action after a press: the action with the same id in [refreshed] (the page's
+ * actions fetched again after the POST), or [posted] (the POST's answer) for the action that was pressed. One press can
+ * change other actions too (a Download also saves the title, so Save turns on). Buttons whose action isn't answered,
+ * or that have no action ([actionOf] null), are left out and keep what they show.
+ */
+fun <B> actionUpdatesById(
+	buttons: List<B>,
+	actionOf: (B) -> ItemAction?,
+	refreshed: List<ItemAction>,
+	posted: ItemAction,
+): List<Pair<B, ItemAction>> {
+	val byId = refreshed.associateBy { it.id } + (posted.id to posted)
+	return buttons.mapNotNull { button ->
+		val id = actionOf(button)?.id ?: return@mapNotNull null
+		byId[id]?.let { button to it }
+	}
+}
+
 /** Puts [items] in the order of [ids]; ids without an item (not returned by the server) are skipped. */
 fun <T> inQueueOrder(ids: List<UUID>, items: List<T>, id: (T) -> UUID): List<T> {
 	val byId = items.associateBy(id)
