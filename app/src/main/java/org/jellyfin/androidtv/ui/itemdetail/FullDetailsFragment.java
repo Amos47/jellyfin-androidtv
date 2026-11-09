@@ -441,9 +441,12 @@ public class FullDetailsFragment extends Fragment implements RecordingIndicatorV
 
                     InfoItem firstRow;
                     if (item.getType() == BaseItemKind.SERIES) {
-                        firstRow = new InfoItem(
-                                getString(R.string.lbl_seasons),
-                                String.format("%d", Utils.getSafeValue(item.getChildCount(), 0)));
+                        // Personal fork: a virtual series (show discovery) has no seasons to count
+                        firstRow = VirtualSeriesKt.getShowsSeasonCount(item)
+                                ? new InfoItem(
+                                        getString(R.string.lbl_seasons),
+                                        String.format("%d", Utils.getSafeValue(item.getChildCount(), 0)))
+                                : new InfoItem();
                     } else {
                         firstRow = new InfoItem(
                                 getString(R.string.lbl_directed_by),
@@ -451,7 +454,8 @@ public class FullDetailsFragment extends Fragment implements RecordingIndicatorV
                     }
                     mDetailsOverviewRow.setInfoItem1(firstRow);
 
-                    if ((item.getRunTimeTicks() != null && item.getRunTimeTicks() > 0) || item.getRunTimeTicks() != null) {
+                    // Personal fork: a virtual series (show discovery) has no run time, so no empty Runs and Ends
+                    if (VirtualSeriesKt.getShowsRunTime(item) && ((item.getRunTimeTicks() != null && item.getRunTimeTicks() > 0) || item.getRunTimeTicks() != null)) {
                         mDetailsOverviewRow.setInfoItem2(new InfoItem(getString(R.string.lbl_runs), getRunTime()));
                         ClockBehavior clockBehavior = userPreferences.getValue().get(UserPreferences.Companion.getClockBehavior());
                         if (clockBehavior == ClockBehavior.ALWAYS || clockBehavior == ClockBehavior.IN_MENUS) {
@@ -595,19 +599,25 @@ public class FullDetailsFragment extends Fragment implements RecordingIndicatorV
 
                 break;
             case SERIES:
-                ItemRowAdapter nextUpAdapter = new ItemRowAdapter(requireContext(), BrowsingUtils.createSeriesGetNextUpRequest(mBaseItem.getId()), false, new CardPresenter(true, 130), adapter);
-                addItemRow(adapter, nextUpAdapter, 0, getString(R.string.lbl_next_up));
+                // Personal fork: a virtual series (show discovery) or a series without children has no episodes to list
+                boolean hasChildRows = VirtualSeriesKt.getHasSeriesChildRows(mBaseItem);
+                if (hasChildRows) {
+                    ItemRowAdapter nextUpAdapter = new ItemRowAdapter(requireContext(), BrowsingUtils.createSeriesGetNextUpRequest(mBaseItem.getId()), false, new CardPresenter(true, 130), adapter);
+                    addItemRow(adapter, nextUpAdapter, 0, getString(R.string.lbl_next_up));
 
-                ItemRowAdapter seasonsAdapter = new ItemRowAdapter(requireContext(), BrowsingUtils.createSeasonsRequest(mBaseItem.getId()), new CardPresenter(), adapter);
-                addItemRow(adapter, seasonsAdapter, 1, getString(R.string.lbl_seasons));
+                    ItemRowAdapter seasonsAdapter = new ItemRowAdapter(requireContext(), BrowsingUtils.createSeasonsRequest(mBaseItem.getId()), new CardPresenter(), adapter);
+                    addItemRow(adapter, seasonsAdapter, 1, getString(R.string.lbl_seasons));
+                }
 
                 //Specials
                 if (mBaseItem.getSpecialFeatureCount() != null && mBaseItem.getSpecialFeatureCount() > 0) {
                     addItemRow(adapter, new ItemRowAdapter(requireContext(), new GetSpecialsRequest(mBaseItem.getId()), new CardPresenter(), adapter), 3, getString(R.string.lbl_specials));
                 }
 
-                ItemRowAdapter upcomingAdapter = new ItemRowAdapter(requireContext(), BrowsingUtils.createUpcomingEpisodesRequest(mBaseItem.getId()), new CardPresenter(), adapter);
-                addItemRow(adapter, upcomingAdapter, 2, getString(R.string.lbl_upcoming));
+                if (hasChildRows) {
+                    ItemRowAdapter upcomingAdapter = new ItemRowAdapter(requireContext(), BrowsingUtils.createUpcomingEpisodesRequest(mBaseItem.getId()), new CardPresenter(), adapter);
+                    addItemRow(adapter, upcomingAdapter, 2, getString(R.string.lbl_upcoming));
+                }
 
                 if (mBaseItem.getPeople() != null && !mBaseItem.getPeople().isEmpty()) {
                     ItemRowAdapter seriesCastAdapter = new ItemRowAdapter(mBaseItem.getPeople(), requireContext(), new CardPresenter(true, 130), adapter);
@@ -978,7 +988,10 @@ public class FullDetailsFragment extends Fragment implements RecordingIndicatorV
         }
 
         org.jellyfin.sdk.model.api.UserItemDataDto userData = mBaseItem.getUserData();
-        if (userData != null && mProgramInfo == null) {
+        // Personal fork: a virtual series (show discovery) has nothing to mark watched or favorite, as on iOS
+        mWatchedToggleButton = null;
+        favButton = null;
+        if (userData != null && mProgramInfo == null && VirtualSeriesKt.getHasWatchedState(mBaseItem)) {
             if (mBaseItem.getType() != BaseItemKind.MUSIC_ARTIST && mBaseItem.getType() != BaseItemKind.PERSON) {
                 mWatchedToggleButton = TextUnderButton.create(requireContext(), R.drawable.ic_watch, buttonSize, 0, getString(R.string.lbl_watched), markWatchedListener);
                 mWatchedToggleButton.setActivated(userData.getPlayed());
