@@ -14,6 +14,7 @@ import org.jellyfin.androidtv.R
 import org.jellyfin.androidtv.data.itemactions.ItemAction
 import org.jellyfin.androidtv.data.itemactions.ItemActionsApi
 import org.jellyfin.androidtv.data.itemactions.actionButtonsFor
+import org.jellyfin.androidtv.data.itemactions.focusRowsBelowButtons
 import org.jellyfin.androidtv.data.itemactions.focusTargetFor
 import org.jellyfin.androidtv.data.itemactions.shouldTakeFocus
 import org.jellyfin.androidtv.data.itemactions.inQueueOrder
@@ -433,7 +434,11 @@ fun FullDetailsFragment.addServerActions(row: MyDetailsOverviewRow, item: BaseIt
 
 		val stockTrailer = trailerButton?.takeIf { it in row.actions }
 		val plan = actionButtonsFor(actions, hasLocalTrailers = stockTrailer != null)
-		if (plan.buttons.isEmpty()) return@launch
+		if (plan.buttons.isEmpty()) {
+			// Nothing to focus in the button row (a virtual series without a trailer): let focus into the rows below
+			if (focusRowsBelowButtons(row.actions) { it.isVisible && it.isEnabled && it.isFocusable }) selectFirstRowBelowButtons()
+			return@launch
+		}
 
 		val buttons = plan.buttons.map { (action, icon) ->
 			TextUnderButton.create(requireContext(), icon, buttonSize, 0, action.label) {

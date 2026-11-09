@@ -96,6 +96,19 @@ class FocusTargetTests : FunSpec({
 	}
 })
 
+class FocusRowsBelowButtonsTests : FunSpec({
+	val canFocus = { button: String -> button != "more" }
+
+	test("a button row with a focusable button keeps focus") {
+		focusRowsBelowButtons(listOf("watch-trailer", "more"), canFocus) shouldBe false
+	}
+
+	test("a button row with nothing focusable sends focus to the rows below") {
+		focusRowsBelowButtons(listOf("more"), canFocus) shouldBe true
+		focusRowsBelowButtons(emptyList(), canFocus) shouldBe true
+	}
+})
+
 class ShouldTakeFocusTests : FunSpec({
 	test("nothing focused: take focus") {
 		shouldTakeFocus(hasFocus = false, focusAttached = false, focusInRow = false, rowRebuilt = false) shouldBe true

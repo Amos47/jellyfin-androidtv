@@ -27,6 +27,7 @@ import org.jellyfin.androidtv.ui.base.Seekbar
 import org.jellyfin.androidtv.ui.base.Text
 import org.jellyfin.androidtv.ui.composable.rememberPlayerProgress
 import org.jellyfin.androidtv.ui.composable.rememberQueueEntry
+import org.jellyfin.androidtv.ui.itemdetail.hasWatchedState
 import org.jellyfin.design.Tokens
 import org.jellyfin.playback.core.PlaybackManager
 import org.jellyfin.playback.core.model.PlayState
@@ -115,6 +116,8 @@ private fun WatchIndicator(
 
 	if (watchedIndicatorBehavior == WatchedIndicatorBehavior.NEVER) return
 	if (watchedIndicatorBehavior == WatchedIndicatorBehavior.EPISODES_ONLY && item.type != BaseItemKind.EPISODE) return
+	// Personal fork: a virtual series (show discovery) has nothing to watch, the server reports it as played
+	if (!item.hasWatchedState) return
 
 	val isPlayed = item.userData?.played == true
 	val unplayedItems = item.userData?.unplayedItemCount?.takeIf { it > 0 }

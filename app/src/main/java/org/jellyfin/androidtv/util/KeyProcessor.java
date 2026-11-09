@@ -12,6 +12,7 @@ import org.jellyfin.androidtv.R;
 import org.jellyfin.androidtv.constant.CustomMessage;
 import org.jellyfin.androidtv.data.repository.CustomMessageRepository;
 import org.jellyfin.androidtv.data.repository.ItemMutationRepository;
+import org.jellyfin.androidtv.ui.itemdetail.VirtualSeriesKt;
 import org.jellyfin.androidtv.ui.itemhandling.AudioQueueBaseRowItem;
 import org.jellyfin.androidtv.ui.itemhandling.BaseRowItem;
 import org.jellyfin.androidtv.ui.itemhandling.BaseRowType;
@@ -236,7 +237,7 @@ public class KeyProcessor {
                 if (item.getType() != BaseItemKind.PLAYLIST) {
                     menu.getMenu().add(0, MENU_INSTANT_MIX, order++, R.string.lbl_instant_mix);
                 }
-            } else {
+            } else if (VirtualSeriesKt.getHasWatchedState(item)) {
                 if (userData != null && userData.getPlayed()) {
                     menu.getMenu().add(0, MENU_UNMARK_PLAYED, order++, activity.getString(R.string.lbl_mark_unplayed));
                 } else {
@@ -244,7 +245,8 @@ public class KeyProcessor {
                 }
             }
 
-            if (userData != null) {
+            // Personal fork: a virtual series (show discovery) has nothing to mark watched or favorite
+            if (userData != null && VirtualSeriesKt.getHasWatchedState(item)) {
                 if (userData.isFavorite()) {
                     menu.getMenu().add(0, MENU_UNMARK_FAVORITE, order++, activity.getString(R.string.lbl_remove_favorite));
                 } else {
