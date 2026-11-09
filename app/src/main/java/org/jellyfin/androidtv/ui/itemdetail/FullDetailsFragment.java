@@ -1108,6 +1108,18 @@ public class FullDetailsFragment extends Fragment implements RecordingIndicatorV
         FullDetailsFragmentHelperKt.focusDefaultButton(this);
     }
 
+    /**
+     * Personal fork: the button row has nothing to focus (a virtual series without a trailer), so the first row below
+     * it is selected, which lets focus into the page, and it takes focus when nothing in the window has it.
+     */
+    void selectFirstRowBelowButtons() {
+        if (mRowsAdapter == null || mRowsAdapter.size() < 2) return;
+        mRowsFragment.setSelectedPosition(1, false);
+        View focus = requireActivity().getCurrentFocus();
+        View grid = mRowsFragment.getVerticalGridView();
+        if (grid != null && (focus == null || !focus.isAttachedToWindow())) grid.requestFocus();
+    }
+
     private void handleResumeButtonAndFocus(BaseItemDto nextUpEpisode) {
         boolean isSeries = mBaseItem.getType() == BaseItemKind.SERIES;
 

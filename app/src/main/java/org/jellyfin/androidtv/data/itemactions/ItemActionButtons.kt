@@ -49,6 +49,13 @@ fun <T> focusTargetFor(buttons: List<T>, focused: T?, canFocus: (T) -> Boolean):
 	focused?.takeIf { it in buttons && canFocus(it) } ?: buttons.firstOrNull(canFocus)
 
 /**
+ * Whether the item page sends focus to the rows below its buttons once the server has answered: when none of [buttons]
+ * can take focus (a virtual series without a trailer has none). Focus can't enter the rows from the toolbar otherwise,
+ * because the list only lets it in through its selected row, which is the button row.
+ */
+fun <T> focusRowsBelowButtons(buttons: List<T>, canFocus: (T) -> Boolean): Boolean = buttons.none(canFocus)
+
+/**
  * Whether the item page moves focus to its default button. It does when nothing has focus, when the focused view has
  * left the window (stale focus crashes the next D-pad press), when focus is on a button row button that is going away,
  * or when the button row was just attached or re-added. Any other focus in the window is the user's choice.
