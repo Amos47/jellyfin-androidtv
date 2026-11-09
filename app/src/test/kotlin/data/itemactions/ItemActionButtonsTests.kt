@@ -37,6 +37,31 @@ class ItemActionButtonsTests : FunSpec({
 		plan.buttons.map { it.icon } shouldBe listOf(R.drawable.ic_trailer, R.drawable.ic_play, R.drawable.ic_play)
 	}
 
+	test("save and download are kept in server order") {
+		val save = ItemAction("save", "Save", "bookmark", "toggle", state = "off")
+		val download = ItemAction("download", "Download", "download", "request", state = "available")
+
+		val plan = actionButtonsFor(listOf(watchTrailer, save, download), hasLocalTrailers = false)
+
+		plan.buttons.map { it.action } shouldBe listOf(watchTrailer, save, download)
+	}
+
+	test("save icon follows its state, download has its own") {
+		val save = ItemAction("save", "Save", "bookmark", "toggle", state = "off")
+
+		actionIcon(save) shouldBe R.drawable.ic_bookmark
+		actionIcon(save.copy(state = "on")) shouldBe R.drawable.ic_bookmark_filled
+		actionIcon(ItemAction("download", "Download", "download", "request")) shouldBe R.drawable.ic_download
+	}
+
+	test("only actions the server disabled can't be pressed") {
+		val download = ItemAction("download", "Download", "download", "request", state = "available", enabled = true)
+
+		isPressable(download) shouldBe true
+		isPressable(download.copy(enabled = null)) shouldBe true
+		isPressable(download.copy(state = "requested", enabled = false)) shouldBe false
+	}
+
 	test("items are put in queue order") {
 		val a = UUID.randomUUID()
 		val b = UUID.randomUUID()

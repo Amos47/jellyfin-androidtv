@@ -23,6 +23,9 @@ data class ItemAction(
 	@SerialName("Label") val label: String,
 	@SerialName("Icon") val icon: String? = null,
 	@SerialName("Kind") val kind: String,
+	@SerialName("State") val state: String? = null,
+	@SerialName("Labels") val labels: Map<String, String>? = null,
+	@SerialName("Enabled") val enabled: Boolean? = null,
 )
 
 @Serializable
@@ -45,6 +48,18 @@ class ItemActionsApi(private val transport: HomeRowsTransport) {
 	} catch (@Suppress("TooGenericExceptionCaught") error: Exception) {
 		Timber.d(error, "Failed to get item actions for $itemId")
 		emptyList()
+	}
+
+	/** Runs [actionId] (a `toggle` or `request` action) on [itemId] and answers the updated action; null on any failure. */
+	suspend fun post(itemId: UUID, actionId: String): ItemAction? = try {
+		val result = transport.send("POST", "Items/$itemId/Actions/$actionId")
+		if (result.status in 200..299) json.decodeFromString<ItemAction>(result.body)
+		else null
+	} catch (error: CancellationException) {
+		throw error
+	} catch (@Suppress("TooGenericExceptionCaught") error: Exception) {
+		Timber.w(error, "Failed to run item action $actionId for $itemId")
+		null
 	}
 
 	/** The item ids [actionId] plays for [itemId], in play order. Throws [ItemActionsException] on a non-2xx answer. */

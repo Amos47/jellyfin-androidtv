@@ -51,4 +51,6 @@
 	<string name="home_rows_keep_editing">Keep editing</string>
 
 	<string name="home_rows_rewatching_caption">Used by series Resume, library Next Up and the launcher. Home rows use each row\'s own Rewatching setting.</string>
+	<!-- Item page: a Save or Download press the server didn't take -->
+	<string name="item_action_failed">That didn\'t work. Check the server and try again.</string>
 </resources>

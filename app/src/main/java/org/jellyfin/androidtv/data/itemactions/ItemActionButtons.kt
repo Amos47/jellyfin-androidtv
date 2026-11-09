@@ -5,8 +5,14 @@ import org.jellyfin.androidtv.R
 import java.util.UUID
 
 const val ITEM_ACTION_KIND_PLAY_QUEUE = "play-queue"
+const val ITEM_ACTION_KIND_TOGGLE = "toggle"
+const val ITEM_ACTION_KIND_REQUEST = "request"
 const val ITEM_ACTION_WATCH_TRAILER = "watch-trailer"
 const val ITEM_ACTION_ICON_TRAILER = "trailer"
+const val ITEM_ACTION_ICON_BOOKMARK = "bookmark"
+const val ITEM_ACTION_ICON_DOWNLOAD = "download"
+private const val ITEM_ACTION_STATE_ON = "on"
+private val shownKinds = setOf(ITEM_ACTION_KIND_PLAY_QUEUE, ITEM_ACTION_KIND_TOGGLE, ITEM_ACTION_KIND_REQUEST)
 
 /** A server action to show as a button on the item page. */
 data class ItemActionButton(
@@ -21,24 +27,30 @@ data class ActionPlan(
 )
 
 /**
- * Plans the item page buttons for the server's [actions]. Only `play-queue` actions are shown, other kinds are ignored
- * until the app knows them. A `watch-trailer` action replaces the stock trailer button ([hasLocalTrailers] is whether
- * the page would show it), so there is only one trailer button.
+ * Plans the item page buttons for the server's [actions]. `play-queue` (Watch trailer), `toggle` (Save) and `request`
+ * (Download) actions are shown, other kinds are ignored until the app knows them. A `watch-trailer` action replaces the
+ * stock trailer button ([hasLocalTrailers] is whether the page would show it), so there is only one trailer button.
  */
 fun actionButtonsFor(actions: List<ItemAction>, hasLocalTrailers: Boolean): ActionPlan {
 	val buttons = actions
-		.filter { it.kind == ITEM_ACTION_KIND_PLAY_QUEUE }
-		.map { action ->
-			val icon = when (action.icon) {
-				ITEM_ACTION_ICON_TRAILER -> R.drawable.ic_trailer
-				else -> R.drawable.ic_play
-			}
-			ItemActionButton(action, icon)
-		}
+		.filter { it.kind in shownKinds }
+		.map { action -> ItemActionButton(action, actionIcon(action)) }
 
 	val hasServerTrailer = buttons.any { it.action.id == ITEM_ACTION_WATCH_TRAILER }
 	return ActionPlan(buttons, showStockTrailer = hasLocalTrailers && !hasServerTrailer)
 }
+
+/** The button icon for [action]: a bookmark is filled while its toggle is on. */
+@DrawableRes
+fun actionIcon(action: ItemAction): Int = when (action.icon) {
+	ITEM_ACTION_ICON_TRAILER -> R.drawable.ic_trailer
+	ITEM_ACTION_ICON_BOOKMARK -> if (action.state == ITEM_ACTION_STATE_ON) R.drawable.ic_bookmark_filled else R.drawable.ic_bookmark
+	ITEM_ACTION_ICON_DOWNLOAD -> R.drawable.ic_download
+	else -> R.drawable.ic_play
+}
+
+/** Whether a press on [action] does anything: false only when the server disabled it (a film already requested). */
+fun isPressable(action: ItemAction): Boolean = action.enabled != false
 
 /**
  * Picks the item page button to focus after the buttons change: the [focused] button while it is still in [buttons]

@@ -11,13 +11,16 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.jellyfin.androidtv.R
+import org.jellyfin.androidtv.data.itemactions.ITEM_ACTION_KIND_PLAY_QUEUE
 import org.jellyfin.androidtv.data.itemactions.ItemAction
 import org.jellyfin.androidtv.data.itemactions.ItemActionsApi
 import org.jellyfin.androidtv.data.itemactions.actionButtonsFor
+import org.jellyfin.androidtv.data.itemactions.actionIcon
 import org.jellyfin.androidtv.data.itemactions.focusRowsBelowButtons
 import org.jellyfin.androidtv.data.itemactions.focusTargetFor
 import org.jellyfin.androidtv.data.itemactions.shouldTakeFocus
 import org.jellyfin.androidtv.data.itemactions.inQueueOrder
+import org.jellyfin.androidtv.data.itemactions.isPressable
 import org.jellyfin.androidtv.data.model.DataRefreshService
 import org.jellyfin.androidtv.data.repository.ItemMutationRepository
 import org.jellyfin.androidtv.data.repository.ItemRepository
@@ -441,9 +444,11 @@ fun FullDetailsFragment.addServerActions(row: MyDetailsOverviewRow, item: BaseIt
 		}
 
 		val buttons = plan.buttons.map { (action, icon) ->
-			TextUnderButton.create(requireContext(), icon, buttonSize, 0, action.label) {
-				playActionQueue(item, action)
-			}.also { it.tag = action }
+			TextUnderButton.create(requireContext(), icon, buttonSize, 0, action.label) { button ->
+				val current = button.tag as ItemAction
+				if (current.kind == ITEM_ACTION_KIND_PLAY_QUEUE) playActionQueue(item, current)
+				else runAction(item, button as TextUnderButton)
+			}.also { it.showAction(action) }
 		}
 
 		// The bound button row mirrors the row's actions, so the new views go in at the same index
@@ -516,6 +521,42 @@ fun FullDetailsFragment.focusDefaultButton(preferred: TextUnderButton? = null, r
 		rowRebuilt = rowRebuilt,
 	)
 	if (take) target.requestFocus()
+}
+
+/**
+ * Shows [action] on its button: label, icon, and dimmed when the server disabled it. A disabled button stays focusable
+ * so focus never gets stuck on the row; a press on it does nothing (see [runAction]).
+ */
+private fun TextUnderButton.showAction(action: ItemAction) {
+	tag = action
+	setLabel(action.label)
+	setIcon(actionIcon(action), binding.imageButton.maxHeight)
+	alpha = if (isPressable(action)) 1f else DISABLED_ACTION_ALPHA
+}
+
+private const val DISABLED_ACTION_ALPHA = 0.4f
+
+/**
+ * Runs a `toggle` (Save) or `request` (Download) action on the server and shows the action it answers on [button]. A
+ * failure leaves the button as it was and says so.
+ */
+private fun FullDetailsFragment.runAction(item: BaseItemDto, button: TextUnderButton) {
+	val itemActionsApi by inject<ItemActionsApi>()
+	val action = button.tag as ItemAction
+	if (!isPressable(action) || !actionPressGate.tryStart()) return
+
+	lifecycleScope.launch {
+		val updated = withContext(Dispatchers.IO) { itemActionsApi.post(item.id, action.id) }
+		actionPressGate.finish()
+		if (!isAdded) return@launch
+
+		if (updated == null) {
+			Toast.makeText(requireContext(), getString(R.string.item_action_failed), Toast.LENGTH_LONG).show()
+			return@launch
+		}
+		// The page may have rebuilt its buttons meanwhile; the answer only goes to the button that was pressed
+		if (button.tag === action) button.showAction(updated)
+	}
 }
 
 /** Plays a `play-queue` action: the server's queue ids, fetched in one call and played in the server's order. */
