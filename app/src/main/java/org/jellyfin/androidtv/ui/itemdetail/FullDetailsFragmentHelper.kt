@@ -4,6 +4,7 @@ import android.content.ActivityNotFoundException
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Toast
+import androidx.core.view.doOnAttach
 import androidx.core.view.isVisible
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.CancellationException
@@ -11,10 +12,10 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.jellyfin.androidtv.R
-import org.jellyfin.androidtv.data.itemactions.ITEM_ACTION_WATCH_TRAILER
 import org.jellyfin.androidtv.data.itemactions.ItemAction
 import org.jellyfin.androidtv.data.itemactions.ItemActionsApi
 import org.jellyfin.androidtv.data.itemactions.actionButtonsFor
+import org.jellyfin.androidtv.data.itemactions.focusTargetFor
 import org.jellyfin.androidtv.data.itemactions.inQueueOrder
 import org.jellyfin.androidtv.data.model.DataRefreshService
 import org.jellyfin.androidtv.data.repository.ItemMutationRepository
@@ -446,20 +447,44 @@ fun FullDetailsFragment.addServerActions(row: MyDetailsOverviewRow, item: BaseIt
 		buttons.forEachIndexed { offset, button -> buttonRow?.addView(button, (index + offset).coerceIn(0, buttonRow.childCount)) }
 		serverActionButtons.addAll(buttons)
 
-		if (!plan.showStockTrailer && stockTrailer != null) {
-			val hadFocus = stockTrailer.hasFocus()
-			row.removeAction(stockTrailer)
-			(stockTrailer.parent as? ViewGroup)?.removeView(stockTrailer)
+		val removedTrailer = stockTrailer?.takeIf { !plan.showStockTrailer }
+		if (removedTrailer != null) {
+			row.removeAction(removedTrailer)
 			trailerButton = null
-
-			if (hadFocus) {
-				val serverTrailer = plan.buttons.indexOfFirst { it.action.id == ITEM_ACTION_WATCH_TRAILER }
-				buttons[serverTrailer].requestFocus()
-			}
 		}
 
 		showMoreButtonIfNeeded()
+
+		// Focus leaves the stock trailer before its view goes: a focused view taken out of the window leaves focus on a
+		// detached view, and the next D-pad press crashes in FocusFinder
+		focusDefaultButton()
+		(removedTrailer?.parent as? ViewGroup)?.removeView(removedTrailer)
 	}
+}
+
+/**
+ * Focuses the item page's default button (see [focusTargetFor]): focus on a button that stays is kept, and so is focus
+ * the user moved elsewhere on the page. Focus on a view outside the window (left over from the page before, or from a
+ * removed button) is replaced. Before the button row is in the window this waits for it to be attached, as the page
+ * may not have focus anywhere else (a virtual film has no Play button to take it).
+ */
+fun FullDetailsFragment.focusDefaultButton() {
+	val row = mDetailsOverviewRow ?: return
+	val buttons = row.actions
+	val focused = buttons.firstOrNull { it.isAttachedToWindow && it.isFocused }
+	val target = focusTargetFor(buttons, focused) { it.isVisible && it.isEnabled && it.isFocusable } ?: return
+	if (target === focused) return
+
+	if (!target.isAttachedToWindow) {
+		target.doOnAttach { view ->
+			view.post { if (isAdded && row === mDetailsOverviewRow) focusDefaultButton() }
+		}
+		return
+	}
+
+	val pageFocus = view?.findFocus()
+	val userFocusElsewhere = pageFocus != null && pageFocus.isAttachedToWindow && pageFocus.parent !== target.parent
+	if (!userFocusElsewhere) target.requestFocus()
 }
 
 /** Plays a `play-queue` action: the server's queue ids, fetched in one call and played in the server's order. */

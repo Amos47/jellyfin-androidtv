@@ -65,3 +65,33 @@ class ActionPressGateTests : FunSpec({
 	}
 
 })
+
+class FocusTargetTests : FunSpec({
+	val shown = setOf("play", "watch-trailer", "favorite", "more")
+	val canFocus = { button: String -> button in shown }
+
+	test("a virtual film focuses Watch trailer, the first button that can take focus") {
+		focusTargetFor(listOf("watch-trailer", "favorite", "more"), focused = null, canFocus) shouldBe "watch-trailer"
+	}
+
+	test("an owned film focuses Play when Resume is hidden") {
+		focusTargetFor(listOf("resume", "play", "watch-trailer", "favorite"), focused = null, canFocus) shouldBe "play"
+	}
+
+	test("focus on a button that stays is kept") {
+		focusTargetFor(listOf("play", "watch-trailer", "favorite"), focused = "favorite", canFocus) shouldBe "favorite"
+	}
+
+	test("focus on a removed button moves to the default") {
+		focusTargetFor(listOf("watch-trailer", "favorite"), focused = "stock-trailer", canFocus) shouldBe "watch-trailer"
+	}
+
+	test("focus on a hidden button moves to the default") {
+		focusTargetFor(listOf("watch-trailer", "resume"), focused = "resume", canFocus) shouldBe "watch-trailer"
+	}
+
+	test("no button can take focus") {
+		focusTargetFor(listOf("resume"), focused = null, canFocus) shouldBe null
+		focusTargetFor(emptyList(), focused = null, canFocus) shouldBe null
+	}
+})

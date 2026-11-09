@@ -40,6 +40,14 @@ fun actionButtonsFor(actions: List<ItemAction>, hasLocalTrailers: Boolean): Acti
 	return ActionPlan(buttons, showStockTrailer = hasLocalTrailers && !hasServerTrailer)
 }
 
+/**
+ * Picks the item page button to focus after the buttons change: the [focused] button while it is still in [buttons]
+ * and can take focus, otherwise the first one that can (Resume or Play for an owned film, Watch trailer for a virtual
+ * one). Null when no button can take focus.
+ */
+fun <T> focusTargetFor(buttons: List<T>, focused: T?, canFocus: (T) -> Boolean): T? =
+	focused?.takeIf { it in buttons && canFocus(it) } ?: buttons.firstOrNull(canFocus)
+
 /** Puts [items] in the order of [ids]; ids without an item (not returned by the server) are skipped. */
 fun <T> inQueueOrder(ids: List<UUID>, items: List<T>, id: (T) -> UUID): List<T> {
 	val byId = items.associateBy(id)

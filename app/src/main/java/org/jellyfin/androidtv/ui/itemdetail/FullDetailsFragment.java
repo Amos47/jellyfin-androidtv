@@ -262,9 +262,10 @@ public class FullDetailsFragment extends Fragment implements RecordingIndicatorV
                                 if (JavaCompat.getCanResume(mBaseItem)) {
                                     mResumeButton.setLabel(getString(R.string.lbl_resume_from, TimeUtils.formatMillis((mBaseItem.getUserData().getPlaybackPositionTicks() / 10000) - getResumePreroll())));
                                 }
-                                if (resumeVisible) {
+                                // Personal fork: only focus buttons in the window, a page without Play keeps its default focus
+                                if (resumeVisible && mResumeButton.isAttachedToWindow()) {
                                     mResumeButton.requestFocus();
-                                } else if (playButton != null && ViewKt.isVisible(playButton)) {
+                                } else if (playButton != null && ViewKt.isVisible(playButton) && playButton.isAttachedToWindow()) {
                                     playButton.requestFocus();
                                 }
                                 showMoreButtonIfNeeded();
@@ -1080,6 +1081,10 @@ public class FullDetailsFragment extends Fragment implements RecordingIndicatorV
         mDetailsOverviewRow.addAction(moreButton);
         if (mBaseItem.getType() != BaseItemKind.EPISODE)
             showMoreButtonIfNeeded();  //Episodes check for previous and then call this above
+
+        // Personal fork: give the page focus even without Play or Resume (a virtual film), else focus stays on a view
+        // that left the window and the next D-pad press crashes
+        FullDetailsFragmentHelperKt.focusDefaultButton(this);
     }
 
     private void handleResumeButtonAndFocus(BaseItemDto nextUpEpisode) {
