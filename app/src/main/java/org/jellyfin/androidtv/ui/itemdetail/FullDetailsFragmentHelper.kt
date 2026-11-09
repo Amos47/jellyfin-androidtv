@@ -474,6 +474,12 @@ fun FullDetailsFragment.focusDefaultButton(preferred: TextUnderButton? = null, r
 	val buttons = row.actions
 	val focused = buttons.firstOrNull { it.isAttachedToWindow && it.isFocused }
 	val target = focusTargetFor(buttons, preferred ?: focused) { it.isVisible && it.isEnabled && it.isFocusable } ?: return
+	if (target.isAttachedToWindow) {
+		// A request still waiting on another, detached button is out of date once an attached target exists
+		pendingFocusView?.removeOnAttachStateChangeListener(pendingFocusListener)
+		pendingFocusView = null
+		pendingFocusListener = null
+	}
 	if (target === focused) return
 
 	if (!target.isAttachedToWindow) {
