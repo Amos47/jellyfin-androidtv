@@ -13,6 +13,7 @@ import okhttp3.Callback
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.Request
+import okhttp3.RequestBody
 import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.Response
 import org.jellyfin.sdk.api.client.ApiClient
@@ -41,6 +42,18 @@ interface HomeRowsTransport {
 	): HomeRowsHttpResult
 }
 
+/**
+ * The OkHttp body for a request: [body] as JSON, or an empty body for a POST, PUT or PATCH without one (OkHttp refuses
+ * those methods without a body, such as an item action's POST), or none.
+ */
+internal fun requestBodyFor(method: String, body: String?): RequestBody? = when {
+	body != null -> body.toRequestBody("application/json".toMediaType())
+	method in methodsNeedingBody -> ByteArray(0).toRequestBody()
+	else -> null
+}
+
+private val methodsNeedingBody = setOf("POST", "PUT", "PATCH")
+
 class OkHttpHomeRowsTransport(
 	private val api: ApiClient,
 	private val okHttpFactory: OkHttpFactory,
@@ -63,7 +76,7 @@ class OkHttpHomeRowsTransport(
 			.url(url)
 			.header("Authorization", authorization)
 			.header("Accept", "application/json")
-			.method(method, body?.toRequestBody("application/json".toMediaType()))
+			.method(method, requestBodyFor(method, body))
 			.build()
 
 		// Enqueued so that cancelling the coroutine (such as a row timeout) cancels the request.
