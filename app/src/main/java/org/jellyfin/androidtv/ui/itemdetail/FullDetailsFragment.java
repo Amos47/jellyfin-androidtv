@@ -35,6 +35,7 @@ import androidx.leanback.widget.RowPresenter;
 import androidx.lifecycle.Lifecycle;
 
 import org.jellyfin.androidtv.R;
+import org.jellyfin.androidtv.data.itemactions.ActionPressGate;
 import org.jellyfin.androidtv.auth.repository.UserRepository;
 import org.jellyfin.androidtv.constant.CustomMessage;
 import org.jellyfin.androidtv.constant.QueryType;
@@ -130,7 +131,7 @@ public class FullDetailsFragment extends Fragment implements RecordingIndicatorV
     private MutableObjectAdapter<Row> mRowsAdapter;
 
     private MyDetailsOverviewRowPresenter mDorPresenter;
-    private MyDetailsOverviewRow mDetailsOverviewRow;
+    MyDetailsOverviewRow mDetailsOverviewRow;
     private CustomListRowPresenter mListRowPresenter;
 
     private Handler mLoopHandler = new Handler();
@@ -170,6 +171,11 @@ public class FullDetailsFragment extends Fragment implements RecordingIndicatorV
         mRowsFragment.setOnItemViewSelectedListener(new ItemViewSelectedListener());
 
         mDorPresenter = new MyDetailsOverviewRowPresenter(markdownRenderer.getValue());
+        // Personal fork: re-adding the buttons drops their focus, put it back on the same button or the default
+        mDorPresenter.setOnButtonsRebound(focusedButton -> {
+            FullDetailsFragmentHelperKt.focusDefaultButton(this, focusedButton, true);
+            return null;
+        });
 
         mItemId = Utils.uuidOrNull(getArguments().getString("ItemId"));
         mChannelId = Utils.uuidOrNull(getArguments().getString("ChannelId"));
@@ -261,9 +267,10 @@ public class FullDetailsFragment extends Fragment implements RecordingIndicatorV
                                 if (JavaCompat.getCanResume(mBaseItem)) {
                                     mResumeButton.setLabel(getString(R.string.lbl_resume_from, TimeUtils.formatMillis((mBaseItem.getUserData().getPlaybackPositionTicks() / 10000) - getResumePreroll())));
                                 }
-                                if (resumeVisible) {
+                                // Personal fork: only focus buttons in the window, a page without Play keeps its default focus
+                                if (resumeVisible && mResumeButton.isAttachedToWindow()) {
                                     mResumeButton.requestFocus();
-                                } else if (playButton != null && ViewKt.isVisible(playButton)) {
+                                } else if (playButton != null && ViewKt.isVisible(playButton) && playButton.isAttachedToWindow()) {
                                     playButton.requestFocus();
                                 }
                                 showMoreButtonIfNeeded();
@@ -762,9 +769,18 @@ public class FullDetailsFragment extends Fragment implements RecordingIndicatorV
     TextUnderButton moreButton;
     TextUnderButton playButton = null;
     TextUnderButton trailerButton = null;
+    // Personal fork: buttons for the server's item actions, see FullDetailsFragmentHelper.addServerActions
+    final List<TextUnderButton> serverActionButtons = new ArrayList<>();
+    int actionsGeneration = 0;
+    final ActionPressGate actionPressGate = new ActionPressGate();
+    // Personal fork: the one pending focusDefaultButton request waiting for the button row to be attached
+    View pendingFocusView = null;
+    View.OnAttachStateChangeListener pendingFocusListener = null;
 
     private void addButtons(int buttonSize) {
         BaseItemDto baseItem = mBaseItem;
+        actionsGeneration++;
+        serverActionButtons.clear();
         String buttonLabel;
         if (baseItem.getType() == BaseItemKind.SERIES) {
             buttonLabel = getString(R.string.lbl_play_next_up);
@@ -854,6 +870,9 @@ public class FullDetailsFragment extends Fragment implements RecordingIndicatorV
             });
             mDetailsOverviewRow.addAction(mVersionsButton);
         }
+
+        // Personal fork: the server's action buttons go here once it answers, the page doesn't wait for them
+        FullDetailsFragmentHelperKt.addServerActions(this, mDetailsOverviewRow, mBaseItem, mDetailsOverviewRow.getActions().size(), buttonSize);
 
         if (TrailerUtils.hasPlayableTrailers(requireContext(), mBaseItem)) {
             trailerButton = TextUnderButton.create(requireContext(), R.drawable.ic_trailer, buttonSize, 0, getString(R.string.lbl_play_trailers), new View.OnClickListener() {
@@ -1070,6 +1089,10 @@ public class FullDetailsFragment extends Fragment implements RecordingIndicatorV
         mDetailsOverviewRow.addAction(moreButton);
         if (mBaseItem.getType() != BaseItemKind.EPISODE)
             showMoreButtonIfNeeded();  //Episodes check for previous and then call this above
+
+        // Personal fork: give the page focus even without Play or Resume (a virtual film), else focus stays on a view
+        // that left the window and the next D-pad press crashes
+        FullDetailsFragmentHelperKt.focusDefaultButton(this);
     }
 
     private void handleResumeButtonAndFocus(BaseItemDto nextUpEpisode) {
@@ -1079,11 +1102,10 @@ public class FullDetailsFragment extends Fragment implements RecordingIndicatorV
         boolean resumeButtonVisible = isSeries ? nextUpEpisode != null : JavaCompat.getCanResume(mBaseItem);
         mResumeButton.setVisibility(resumeButtonVisible ? View.VISIBLE : View.GONE);
 
-        if (resumeButtonVisible) {
-            mResumeButton.requestFocus();
-        } else {
-            playButton.requestFocus();
-        }
+        // Personal fork: a button outside the window is focused once it's attached, focusing it now would strand focus
+        TextUnderButton focusButton = resumeButtonVisible ? mResumeButton : playButton;
+        if (focusButton.isAttachedToWindow()) focusButton.requestFocus();
+        else FullDetailsFragmentHelperKt.focusDefaultButton(this, focusButton);
     }
 
     private void addVersionsMenu(View v) {
@@ -1104,7 +1126,8 @@ public class FullDetailsFragment extends Fragment implements RecordingIndicatorV
 
                     mBaseItem = item;
                     mDorPresenter.getViewHolder().setItem(mDetailsOverviewRow);
-                    if (mVersionsButton != null) mVersionsButton.requestFocus();
+                    if (mVersionsButton != null && mVersionsButton.isAttachedToWindow()) mVersionsButton.requestFocus();
+                    else FullDetailsFragmentHelperKt.focusDefaultButton(FullDetailsFragment.this, null, true);
                     return null;
                 });
                 return true;
@@ -1123,6 +1146,7 @@ public class FullDetailsFragment extends Fragment implements RecordingIndicatorV
         // added in order of priority (should match res/menu/menu_details_more.xml)
         if (queueButton != null) actionsList.add(queueButton);
         if (trailerButton != null) actionsList.add(trailerButton);
+        actionsList.addAll(serverActionButtons);
         if (shuffleButton != null) actionsList.add(shuffleButton);
         if (favButton != null) actionsList.add(favButton);
         if (goToSeriesButton != null) actionsList.add(goToSeriesButton);
@@ -1232,6 +1256,8 @@ public class FullDetailsFragment extends Fragment implements RecordingIndicatorV
     void play(final List<BaseItemDto> items, final int pos, final boolean shuffle) {
         if (items.isEmpty()) return;
         if (shuffle) Collections.shuffle(items);
+        // Queues of trailers (or episodes) start a binge-protection session; anything else is a no-op
+        if (pos >= 0 && pos < items.size()) interactionTracker.getValue().notifyStartSession(items.get(pos), items);
         KoinJavaComponent.<PlaybackLauncher>get(PlaybackLauncher.class).launch(getContext(), items, pos);
     }
 }

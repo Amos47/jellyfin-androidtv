@@ -21,4 +21,6 @@ class MyDetailsOverviewRow @JvmOverloads constructor(
 
 	fun clearActions() = _actions.clear()
 	fun addAction(button: TextUnderButton) = _actions.add(button)
+	fun insertActions(index: Int, buttons: List<TextUnderButton>) = _actions.addAll(index.coerceIn(0, _actions.size), buttons)
+	fun removeAction(button: TextUnderButton) = _actions.remove(button)
 }

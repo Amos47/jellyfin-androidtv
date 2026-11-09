@@ -2,16 +2,26 @@ package org.jellyfin.androidtv.ui.itemdetail
 
 import android.content.ActivityNotFoundException
 import android.view.View
+import android.view.ViewGroup
 import android.widget.Toast
 import androidx.core.view.isVisible
 import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.jellyfin.androidtv.R
+import org.jellyfin.androidtv.data.itemactions.ItemAction
+import org.jellyfin.androidtv.data.itemactions.ItemActionsApi
+import org.jellyfin.androidtv.data.itemactions.actionButtonsFor
+import org.jellyfin.androidtv.data.itemactions.focusTargetFor
+import org.jellyfin.androidtv.data.itemactions.shouldTakeFocus
+import org.jellyfin.androidtv.data.itemactions.inQueueOrder
 import org.jellyfin.androidtv.data.model.DataRefreshService
 import org.jellyfin.androidtv.data.repository.ItemMutationRepository
+import org.jellyfin.androidtv.data.repository.ItemRepository
 import org.jellyfin.androidtv.preference.UserPreferences
+import org.jellyfin.androidtv.ui.TextUnderButton
 import org.jellyfin.androidtv.ui.navigation.Destinations
 import org.jellyfin.androidtv.ui.navigation.NavigationRepository
 import org.jellyfin.androidtv.util.TimeUtils
@@ -23,6 +33,7 @@ import org.jellyfin.androidtv.util.sdk.compat.copyWithUserData
 import org.jellyfin.androidtv.util.showIfNotEmpty
 import org.jellyfin.sdk.api.client.ApiClient
 import org.jellyfin.sdk.api.client.exception.ApiClientException
+import org.jellyfin.sdk.api.client.extensions.itemsApi
 import org.jellyfin.sdk.api.client.extensions.libraryApi
 import org.jellyfin.sdk.api.client.extensions.liveTvApi
 import org.jellyfin.sdk.api.client.extensions.tvShowsApi
@@ -85,6 +96,13 @@ fun FullDetailsFragment.showDetailsMenu(
 
 	if (trailerButton?.isVisible == false) {
 		item(getString(R.string.lbl_play_trailers)) { playTrailers() }
+	}
+
+	for (button in serverActionButtons) {
+		if (!button.isVisible) {
+			val label = (button.tag as? ItemAction)?.label ?: continue
+			item(label) { button.performClick() }
+		}
 	}
 
 	if (favButton?.isVisible == false) {
@@ -394,5 +412,141 @@ fun FullDetailsFragment.getLiveTvChannel(
 		}.onSuccess { channel ->
 			callback(channel)
 		}
+	}
+}
+
+/**
+ * Personal fork: asks the server for the item page's actions and adds a button for each at [index] (where the stock
+ * trailer button goes), in server order. The page doesn't wait for this: the buttons appear when the server answers,
+ * if the page still shows the same item and buttons. A `watch-trailer` action replaces the stock trailer button. Stock
+ * servers answer 404, which leaves the page as it was.
+ */
+fun FullDetailsFragment.addServerActions(row: MyDetailsOverviewRow, item: BaseItemDto, index: Int, buttonSize: Int) {
+	val itemActionsApi by inject<ItemActionsApi>()
+	val generation = actionsGeneration
+
+	lifecycleScope.launch {
+		val actions = withContext(Dispatchers.IO) { itemActionsApi.getActions(item.id) }
+		// Only add them to the page that asked: still attached, same item, same buttons
+		val samePage = row === mDetailsOverviewRow && generation == actionsGeneration && mBaseItem?.id == item.id
+		if (!isAdded || !samePage) return@launch
+
+		val stockTrailer = trailerButton?.takeIf { it in row.actions }
+		val plan = actionButtonsFor(actions, hasLocalTrailers = stockTrailer != null)
+		if (plan.buttons.isEmpty()) return@launch
+
+		val buttons = plan.buttons.map { (action, icon) ->
+			TextUnderButton.create(requireContext(), icon, buttonSize, 0, action.label) {
+				playActionQueue(item, action)
+			}.also { it.tag = action }
+		}
+
+		// The bound button row mirrors the row's actions, so the new views go in at the same index
+		val buttonRow = row.actions.firstOrNull()?.parent as? ViewGroup
+		row.insertActions(index, buttons)
+		buttons.forEachIndexed { offset, button -> buttonRow?.addView(button, (index + offset).coerceIn(0, buttonRow.childCount)) }
+		serverActionButtons.addAll(buttons)
+
+		val removedTrailer = stockTrailer?.takeIf { !plan.showStockTrailer }
+		if (removedTrailer != null) {
+			row.removeAction(removedTrailer)
+			trailerButton = null
+		}
+
+		showMoreButtonIfNeeded()
+
+		// Focus leaves the stock trailer before its view goes: a focused view taken out of the window leaves focus on a
+		// detached view, and the next D-pad press crashes in FocusFinder
+		focusDefaultButton()
+		(removedTrailer?.parent as? ViewGroup)?.removeView(removedTrailer)
+	}
+}
+
+/**
+ * Focuses the item page's default button (see [focusTargetFor]), preferring [preferred] or the focused button while
+ * they stay. Focus the user moved anywhere else in the window (the rows below, an overlay) is left alone, see
+ * [shouldTakeFocus]; [rowRebuilt] is set when the button row was just attached or re-added, so its focus was dropped.
+ * Before the button row is in the window this waits for it to be attached, with one pending request per page.
+ */
+@JvmOverloads
+fun FullDetailsFragment.focusDefaultButton(preferred: TextUnderButton? = null, rowRebuilt: Boolean = false) {
+	val row = mDetailsOverviewRow ?: return
+	val buttons = row.actions
+	val focused = buttons.firstOrNull { it.isAttachedToWindow && it.isFocused }
+	val target = focusTargetFor(buttons, preferred ?: focused) { it.isVisible && it.isEnabled && it.isFocusable } ?: return
+	if (target.isAttachedToWindow) {
+		// A request still waiting on another, detached button is out of date once an attached target exists
+		pendingFocusView?.removeOnAttachStateChangeListener(pendingFocusListener)
+		pendingFocusView = null
+		pendingFocusListener = null
+	}
+	if (target === focused) return
+
+	if (!target.isAttachedToWindow) {
+		// Replace the pending request: the default can change (a server button arrives) before the row is attached
+		pendingFocusView?.removeOnAttachStateChangeListener(pendingFocusListener)
+		val listener = object : View.OnAttachStateChangeListener {
+			override fun onViewAttachedToWindow(view: View) {
+				view.removeOnAttachStateChangeListener(this)
+				if (pendingFocusListener === this) {
+					pendingFocusView = null
+					pendingFocusListener = null
+				}
+				view.post { if (isAdded && row === mDetailsOverviewRow) focusDefaultButton(rowRebuilt = true) }
+			}
+
+			override fun onViewDetachedFromWindow(view: View) = Unit
+		}
+		pendingFocusView = target
+		pendingFocusListener = listener
+		target.addOnAttachStateChangeListener(listener)
+		return
+	}
+
+	val windowFocus = activity?.currentFocus
+	val take = shouldTakeFocus(
+		hasFocus = windowFocus != null,
+		focusAttached = windowFocus?.isAttachedToWindow == true,
+		focusInRow = windowFocus != null && windowFocus.parent === target.parent,
+		rowRebuilt = rowRebuilt,
+	)
+	if (take) target.requestFocus()
+}
+
+/** Plays a `play-queue` action: the server's queue ids, fetched in one call and played in the server's order. */
+private fun FullDetailsFragment.playActionQueue(item: BaseItemDto, action: ItemAction) {
+	val api by inject<ApiClient>()
+	val itemActionsApi by inject<ItemActionsApi>()
+
+	// A second press while the queue is being fetched does nothing
+	if (!actionPressGate.tryStart()) return
+
+	lifecycleScope.launch {
+		val items = try {
+			withContext(Dispatchers.IO) {
+				val ids = itemActionsApi.getQueue(item.id, action.id)
+				if (ids.isEmpty()) emptyList()
+				else inQueueOrder(ids, api.itemsApi.getItems(ids = ids, fields = ItemRepository.itemFields).content.items) { it.id }
+			}
+		} catch (error: CancellationException) {
+			throw error
+		} catch (@Suppress("TooGenericExceptionCaught") error: Exception) {
+			Timber.w(error, "Failed to get the ${action.id} queue for ${item.id}")
+			null
+		}
+
+		actionPressGate.finish()
+
+		// The press is dropped quietly when the page is no longer in front
+		if (!isResumed) return@launch
+
+		if (items.isNullOrEmpty()) {
+			if (items != null) Timber.w("The ${action.id} queue for ${item.id} is empty")
+			val context = context ?: return@launch
+			Toast.makeText(context, getString(R.string.msg_video_playback_error), Toast.LENGTH_LONG).show()
+			return@launch
+		}
+
+		play(items.toMutableList(), 0, false)
 	}
 }

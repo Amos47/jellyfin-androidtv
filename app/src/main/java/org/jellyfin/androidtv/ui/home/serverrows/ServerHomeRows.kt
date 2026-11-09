@@ -10,6 +10,7 @@ import org.jellyfin.androidtv.data.homerows.HomeRowPresentation
 import org.jellyfin.androidtv.data.homerows.HomeRowsApi
 import org.jellyfin.sdk.model.api.BaseItemDto
 import org.jellyfin.sdk.model.api.BaseItemKind
+import org.jellyfin.sdk.model.api.PlayAccess
 import timber.log.Timber
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
@@ -54,7 +55,7 @@ data class LoadedServerRow(
 suspend fun buildServerRows(api: HomeRowsApi, timeout: Duration = 10.seconds): List<LoadedServerRow>? {
 	if (!api.isSupported()) return null
 
-	val configuration = runCatching { api.getConfiguration() }
+	val configuration = runCatching { api.getConfiguration(expand = true) }
 		.onFailure { Timber.w(it, "Could not load the home rows layout") }
 		.getOrNull() ?: return null
 
@@ -77,7 +78,11 @@ suspend fun buildServerRows(api: HomeRowsApi, timeout: Duration = 10.seconds): L
 	}
 }
 
-/** The row published to the TV launcher: the first shown row that isn't a library row (personal fork). */
-fun launcherRow(rows: List<LoadedServerRow>): LoadedServerRow? = rows.firstOrNull {
-	it.style != ServerRowStyle.LIBRARY_BUTTONS && it.style != ServerRowStyle.LIBRARY_TILES
+/**
+ * The row published to the TV launcher: the first shown row that isn't a library row (personal fork). A row where
+ * nothing can be played (discovery films) stays off the launcher; a mixed row is fine.
+ */
+fun launcherRow(rows: List<LoadedServerRow>): LoadedServerRow? = rows.firstOrNull { row ->
+	row.style != ServerRowStyle.LIBRARY_BUTTONS && row.style != ServerRowStyle.LIBRARY_TILES &&
+		!(row.items.items.isNotEmpty() && row.items.items.all { it.playAccess == PlayAccess.NONE })
 }

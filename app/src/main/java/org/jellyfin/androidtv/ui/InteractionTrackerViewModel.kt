@@ -14,8 +14,43 @@ import org.jellyfin.androidtv.preference.UserPreferences
 import org.jellyfin.androidtv.ui.playback.PlaybackControllerContainer
 import org.jellyfin.sdk.model.api.BaseItemDto
 import org.jellyfin.sdk.model.api.BaseItemKind
+import org.jellyfin.sdk.model.api.ExtraType
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
+
+/**
+ * Whether this item is a trailer. Trailers queued by the server are videos with the trailer extra type;
+ * other paths may use the trailer kind.
+ */
+fun isTrailer(item: BaseItemDto): Boolean =
+	item.type == BaseItemKind.TRAILER ||
+		(item.type == BaseItemKind.VIDEO && item.extraType == ExtraType.TRAILER)
+
+/**
+ * Whether playing this item counts toward the "Still watching?" limits: episodes and trailers.
+ */
+fun countsForStillWatching(item: BaseItemDto): Boolean =
+	item.type == BaseItemKind.EPISODE || isTrailer(item)
+
+/** What to do when an item finishes and another one is queued. */
+enum class AfterItem { PLAY_NEXT, STILL_WATCHING, NEXT_UP, END }
+
+/**
+ * Decide what follows a finished item. Trailers skip the Next Up screen so a trailer queue plays back to
+ * back, but still go through the Still watching check.
+ */
+fun afterItemComplete(
+	item: BaseItemDto,
+	stillWatchingEnabled: Boolean,
+	nextUpEnabled: Boolean,
+	stillWatchingDue: Boolean,
+): AfterItem = when {
+	!stillWatchingEnabled && !nextUpEnabled -> AfterItem.PLAY_NEXT
+	stillWatchingEnabled && stillWatchingDue -> AfterItem.STILL_WATCHING
+	isTrailer(item) -> AfterItem.PLAY_NEXT
+	nextUpEnabled -> AfterItem.NEXT_UP
+	else -> AfterItem.END
+}
 
 class InteractionTrackerViewModel(
 	private val userPreferences: UserPreferences,
@@ -67,8 +102,8 @@ class InteractionTrackerViewModel(
 	}
 
 	fun notifyStartSession(item: BaseItemDto, items: List<BaseItemDto>) {
-		// No need to track when only watching 1 episode
-		if (item.type == BaseItemKind.EPISODE && items.size > 1) {
+		// No need to track when only watching 1 episode or trailer
+		if (countsForStillWatching(item) && items.size > 1) {
 			resetSession()
 			episodeWasInterrupted = false
 		}
@@ -85,7 +120,7 @@ class InteractionTrackerViewModel(
 	}
 
 	fun notifyStart(item: BaseItemDto) {
-		if (item.type == BaseItemKind.EPISODE) isWatchingEpisodes = true
+		if (countsForStillWatching(item)) isWatchingEpisodes = true
 	}
 
 	fun notifyInteraction(canCancel: Boolean, userInitiated: Boolean) {

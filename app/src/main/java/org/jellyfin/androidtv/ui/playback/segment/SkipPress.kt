@@ -1,5 +1,6 @@
 package org.jellyfin.androidtv.ui.playback.segment
 
+import org.jellyfin.sdk.model.api.BaseItemKind
 import org.jellyfin.sdk.model.api.MediaSegmentType
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
@@ -79,4 +80,13 @@ private fun nextEpisodeFallback(
 	if (position < start || start == dismissedStart) return null
 
 	return SkipPrompt(target = runtime, nextEpisode = true, segmentStart = start)
+}
+
+enum class SkipLabel { SKIP, NEXT_EPISODE, NEXT }
+
+/** The skip button's label: "Next episode" only when the next queued item is an episode, else "Next". */
+fun skipLabel(nextEpisode: Boolean, nextItemKind: BaseItemKind?) = when {
+	!nextEpisode -> SkipLabel.SKIP
+	nextItemKind == BaseItemKind.EPISODE -> SkipLabel.NEXT_EPISODE
+	else -> SkipLabel.NEXT
 }

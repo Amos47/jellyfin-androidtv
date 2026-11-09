@@ -2,6 +2,7 @@ package org.jellyfin.androidtv.ui.playback.segment
 
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
+import org.jellyfin.sdk.model.api.BaseItemKind
 import org.jellyfin.sdk.model.api.MediaSegmentType
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.minutes
@@ -103,5 +104,21 @@ class NextEpisodeFallbackTests : FunSpec({
 
 	test("Nothing without a known runtime") {
 		skipPrompt(21.minutes, listOf(intro), true, null, runtime = null, hasCreditsMarker = false) shouldBe null
+	}
+})
+
+class SkipLabelTests : FunSpec({
+	test("a skip is a skip") {
+		skipLabel(nextEpisode = false, nextItemKind = BaseItemKind.EPISODE) shouldBe SkipLabel.SKIP
+	}
+
+	test("the next item being an episode says next episode") {
+		skipLabel(nextEpisode = true, nextItemKind = BaseItemKind.EPISODE) shouldBe SkipLabel.NEXT_EPISODE
+	}
+
+	test("any other next item says next") {
+		skipLabel(nextEpisode = true, nextItemKind = BaseItemKind.MOVIE) shouldBe SkipLabel.NEXT
+		skipLabel(nextEpisode = true, nextItemKind = BaseItemKind.TRAILER) shouldBe SkipLabel.NEXT
+		skipLabel(nextEpisode = true, nextItemKind = null) shouldBe SkipLabel.NEXT
 	}
 })

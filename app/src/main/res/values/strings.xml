@@ -263,6 +263,7 @@
     <string name="lbl_more_like_this">More like this</string>
     <string name="lbl_previous_episode">Previous episode</string>
     <string name="lbl_next_episode">Next episode</string>
+    <string name="lbl_next">Next</string>
     <string name="lbl_album_name">Album name</string>
     <string name="lbl_song_title">Song title</string>
     <string name="lbl_tv_channel_status">%1$d of %2$d channels</string>

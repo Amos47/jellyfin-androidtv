@@ -28,11 +28,14 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.flow.MutableStateFlow
 import org.jellyfin.androidtv.R
+import org.jellyfin.androidtv.ui.playback.segment.SkipLabel
+import org.jellyfin.androidtv.ui.playback.segment.skipLabel
 import org.jellyfin.androidtv.ui.base.Icon
 import org.jellyfin.androidtv.ui.base.Text
 import org.jellyfin.androidtv.ui.playback.segment.MediaSegmentRepository
 import org.jellyfin.androidtv.ui.playback.segment.SkipSegment
 import org.jellyfin.androidtv.ui.playback.segment.skipPrompt
+import org.jellyfin.sdk.model.api.BaseItemKind
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
 
@@ -40,6 +43,7 @@ import kotlin.time.Duration.Companion.milliseconds
 fun SkipOverlayComposable(
 	visible: Boolean,
 	nextEpisode: Boolean = false,
+	nextItemKind: BaseItemKind? = BaseItemKind.EPISODE,
 ) {
 	Box(
 		contentAlignment = Alignment.BottomEnd,
@@ -62,7 +66,13 @@ fun SkipOverlayComposable(
 
 				Text(
 					// Personal fork: skipping the credits plays the next episode
-					text = stringResource(if (nextEpisode) R.string.lbl_next_episode else R.string.segment_action_skip),
+					text = stringResource(
+						when (skipLabel(nextEpisode, nextItemKind)) {
+							SkipLabel.SKIP -> R.string.segment_action_skip
+							SkipLabel.NEXT_EPISODE -> R.string.lbl_next_episode
+							SkipLabel.NEXT -> R.string.lbl_next
+						}
+					),
 					color = colorResource(R.color.button_default_normal_text),
 					fontSize = 18.sp,
 				)
@@ -80,6 +90,7 @@ class SkipOverlayView @JvmOverloads constructor(
 	private val _targetPosition = MutableStateFlow<Duration?>(null)
 	private val _skipUiEnabled = MutableStateFlow(true)
 	private val _nextEpisode = MutableStateFlow(false)
+	private val _nextItemKind = MutableStateFlow<BaseItemKind?>(null)
 
 	// Personal fork: the button follows the playback position, see skipPrompt
 	private var segments: List<SkipSegment> = emptyList()
@@ -103,7 +114,14 @@ class SkipOverlayView @JvmOverloads constructor(
 		}
 
 	/** Personal fork: sets the segments to offer skipping for the current item, replacing the previous item's. */
-	fun setSegments(segments: List<SkipSegment>, hasNextItem: Boolean, runtime: Duration?, hasCreditsMarker: Boolean) {
+	fun setSegments(
+		segments: List<SkipSegment>,
+		hasNextItem: Boolean,
+		runtime: Duration?,
+		hasCreditsMarker: Boolean,
+		nextItemKind: BaseItemKind? = null,
+	) {
+		_nextItemKind.value = nextItemKind
 		this.segments = segments
 		this.hasNextItem = hasNextItem
 		this.runtime = runtime
@@ -173,8 +191,9 @@ class SkipOverlayView @JvmOverloads constructor(
 		}
 
 		val nextEpisode by _nextEpisode.collectAsState()
+		val nextItemKind by _nextItemKind.collectAsState()
 
 		// Personal fork: no auto hide, the button stays for the whole segment
-		SkipOverlayComposable(visible, nextEpisode)
+		SkipOverlayComposable(visible, nextEpisode, nextItemKind)
 	}
 }

@@ -6,6 +6,7 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.View.OnFocusChangeListener
 import android.widget.FrameLayout
+import androidx.core.view.isVisible
 import org.jellyfin.androidtv.databinding.ViewRowDetailsBinding
 
 class DetailRowView @JvmOverloads constructor(
@@ -26,12 +27,13 @@ class DetailRowView @JvmOverloads constructor(
 		private val focusChangeListener = OnFocusChangeListener { view, hasFocus ->
 			// Restore last focused button when navigating back to button row
 			if (hasFocus && lastFocusedButton != null) {
-				lastFocusedButton?.requestFocus()
+				// Personal fork: only a button still shown in the row, focusing a removed one leaves focus off the window
+				lastFocusedButton?.takeIf { it.parent === binding.fdButtonRow && it.isVisible }?.requestFocus()
 				lastFocusedButton = null
 			}
 			view.post {
 				// Store last focused button when navigating away from button row
-				if (binding.fdButtonRow.focusedChild == null) {
+				if (binding.fdButtonRow.focusedChild == null && view.parent === binding.fdButtonRow) {
 					lastFocusedButton = view
 				}
 			}
@@ -43,6 +45,7 @@ class DetailRowView @JvmOverloads constructor(
 
 		override fun onChildViewRemoved(parent: View?, child: View?) {
 			child?.onFocusChangeListener = null
+			if (child === lastFocusedButton) lastFocusedButton = null
 		}
 	}
 

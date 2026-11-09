@@ -128,7 +128,13 @@ class HomeRowsApi(
 		}
 	}
 
-	suspend fun getConfiguration(): HomeRowConfiguration = decode(get("HomeRows/Configuration"))
+	/**
+	 * Loads the layout. [expand] asks the server to include derived rows (Home screen only; the editor keeps the plain
+	 * layout, since the server rejects saving derived ids). Servers that don't know the parameter ignore it.
+	 */
+	suspend fun getConfiguration(expand: Boolean = false): HomeRowConfiguration = decode(
+		get("HomeRows/Configuration", if (expand) mapOf("expand" to "true") else emptyMap())
+	)
 
 	suspend fun getProviders(): List<HomeRowProvider> = decode<HomeRowProviders>(get("HomeRows/Providers")).providers
 
@@ -138,7 +144,7 @@ class HomeRowsApi(
 			mapOf(
 				"startIndex" to "0",
 				"limit" to limit.toString(),
-				"fields" to "PrimaryImageAspectRatio,Overview",
+				"fields" to "PrimaryImageAspectRatio,Overview,PlayAccess",
 				"imageTypeLimit" to "1",
 				"enableImageTypes" to "Primary,Backdrop,Thumb,Banner",
 			),

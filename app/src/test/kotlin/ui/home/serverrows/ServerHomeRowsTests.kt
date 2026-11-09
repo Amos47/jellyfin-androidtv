@@ -12,6 +12,7 @@ import org.jellyfin.androidtv.data.homerows.HomeRowsHttpResult
 import org.jellyfin.androidtv.data.homerows.HomeRowsTransport
 import org.jellyfin.sdk.model.api.BaseItemDto
 import org.jellyfin.sdk.model.api.BaseItemKind
+import org.jellyfin.sdk.model.api.PlayAccess
 import java.util.UUID
 import kotlin.time.Duration.Companion.milliseconds
 
@@ -85,6 +86,34 @@ class ServerHomeRowsTests : FunSpec({
 		buildServerRows(HomeRowsApi(transport) { "s" }) shouldBe null
 	}
 
+	test("buildServerRows requests the expanded layout") {
+		val id = UUID.randomUUID()
+		val transport = FakeHomeRowsTransport { _, path ->
+			if (path == "HomeRows/Configuration") HomeRowsHttpResult(200, configurationJson(id to true))
+			else HomeRowsHttpResult(200, itemsJson(path.split('/')[1]))
+		}
+
+		buildServerRows(HomeRowsApi(transport) { "s" })!!.map { it.row.id } shouldBe listOf(id)
+
+		val configurationCalls = transport.calls.filter { it.path == "HomeRows/Configuration" }
+		// The support probe stays plain; only the layout load asks for expand.
+		configurationCalls.map { it.query["expand"] } shouldBe listOf(null, "true")
+	}
+
+	test("row items request PlayAccess") {
+		val id = UUID.randomUUID()
+		val transport = FakeHomeRowsTransport { _, path ->
+			if (path == "HomeRows/Configuration") HomeRowsHttpResult(200, configurationJson(id to true))
+			else HomeRowsHttpResult(200, itemsJson(path.split('/')[1]))
+		}
+
+		buildServerRows(HomeRowsApi(transport) { "s" })
+
+		val fields = transport.calls.single { it.path == "HomeRows/$id/Items" }.query["fields"]!!.split(',')
+		fields.contains("PlayAccess") shouldBe true
+		fields.contains("Overview") shouldBe true
+	}
+
 	test("buildServerRows keeps order and drops failed rows") {
 		val ids = List(3) { UUID.randomUUID() }
 		val transport = FakeHomeRowsTransport { _, path ->
@@ -143,6 +172,27 @@ class ServerHomeRowsTests : FunSpec({
 			)
 
 			launcherRow(rows)?.title shouldBe "Continue Watching"
+		}
+
+		fun withAccess(title: String, vararg access: PlayAccess?) = LoadedServerRow(
+			row(),
+			items(title = title, list = access.map { BaseItemDto(id = UUID.randomUUID(), type = BaseItemKind.MOVIE, playAccess = it) }),
+			title,
+			ServerRowStyle.POSTER,
+		)
+
+		test("skips a row where nothing can be played") {
+			val rows = listOf(
+				withAccess("Discovery", PlayAccess.NONE, PlayAccess.NONE),
+				withAccess("Comedy", PlayAccess.FULL),
+			)
+
+			launcherRow(rows)?.title shouldBe "Comedy"
+			launcherRow(rows.take(1)) shouldBe null
+		}
+
+		test("keeps a mixed row") {
+			launcherRow(listOf(withAccess("Mixed", PlayAccess.NONE, PlayAccess.FULL)))?.title shouldBe "Mixed"
 		}
 
 		test("is null when there are only library rows") {

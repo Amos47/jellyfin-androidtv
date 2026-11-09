@@ -17,7 +17,9 @@ import org.jellyfin.androidtv.auth.repository.UserRepository
 import org.jellyfin.androidtv.auth.repository.UserRepositoryImpl
 import org.jellyfin.androidtv.data.eventhandling.SocketHandler
 import org.jellyfin.androidtv.data.homerows.HomeRowsApi
+import org.jellyfin.androidtv.data.homerows.HomeRowsTransport
 import org.jellyfin.androidtv.data.homerows.OkHttpHomeRowsTransport
+import org.jellyfin.androidtv.data.itemactions.ItemActionsApi
 import org.jellyfin.androidtv.ui.settings.screen.home.rows.HomeRowsEditorViewModel
 import org.jellyfin.sdk.api.client.ApiClient
 import org.jellyfin.androidtv.data.model.DataRefreshService
@@ -112,7 +114,11 @@ val appModule = module {
 	}
 
 	// Personal fork: Custom Home Rows, see docs/home-rows.md
-	single { HomeRowsApi(OkHttpHomeRowsTransport(get(), get())) { get<ApiClient>().baseUrl.orEmpty() } }
+	single<HomeRowsTransport> { OkHttpHomeRowsTransport(get(), get()) }
+	single { HomeRowsApi(get()) { get<ApiClient>().baseUrl.orEmpty() } }
+
+	// Personal fork: server item actions (film page buttons), see docs/discovery-api.md in the server repository
+	single { ItemActionsApi(get()) }
 
 	single { SocketHandler(get(), get(), get(), get(), get(), get(), get(), get(), get(), ProcessLifecycleOwner.get().lifecycle) }
 
